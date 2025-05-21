@@ -51,9 +51,14 @@ def train(save_dir="/workspace/experiments/simulation/mixer_results",
     wandb_hps = {"hp" : 0} # Add hyperparams 
     exp_dir_path = os.path.join(save_dir, exp_name)
     logger = get_logger(save_dir, exp_name, wandb_hps=wandb_hps, project=proj_name)
-    if gpus > 1:
-        accelerator='ddp'
-    trainer = Trainer(devices=gpus,
+    if gpus > 0:
+        accelerator = "gpu"
+        devices = gpus
+    else:
+        accelerator = "cpu"
+        devices = 1
+
+    trainer = Trainer(devices=devices,
                       accelerator=accelerator,
                       logger=logger,
                       callbacks=[get_early_stop_callback(patience),
