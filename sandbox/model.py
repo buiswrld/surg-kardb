@@ -35,86 +35,76 @@ class MixerTask(pl.LightningModule):
         self.model = MlpMixer(hmr_embedd_dim=hmr_embedd_dim, seq_len=seq_len, num_classes=num_classes,
                               drop_path_rate=dropout_prob, mlp_ratio=mlp_ratio, num_blocks=num_mlp_blocks)
         self.loss = nn.CrossEntropyLoss()
+        self.validation_outputs = []
+        self.test_outputs = []
 
     def forward(self, x):
-        return self.model(x.to(torch.float32)) #Necessary to prevent conversion issues ) 
+        return self.model(x.to(torch.float32))
 
     def training_step(self, batch, batch_nb):
-        """
-        Returns:
-            A dictionary of loss and metrics, with:
-                loss(required): loss used to calculate the gradient
-                log: metrics to be logged to the TensorBoard and metrics.csv
-                progress_bar: metrics to be logged to the progress bar
-                              and metrics.csv
-        """
         x, y = batch["embedding_seq"], batch["label"]
         logits = self.forward(x) 
         loss = self.loss(logits, y.long())
         self.log("train_loss", loss)
-        return {'loss': loss, 'log': {'train_loss': loss}}
+        return {'loss': loss}
 
     def validation_step(self, batch, batch_nb):
         x, y = batch["embedding_seq"], batch["label"].to(torch.float32)
         logits = self.forward(x) 
         loss = self.loss(logits, y.long())
         probs = torch.softmax(logits, dim=1)
-        breakpoint() 
-        return {'labels': y, 'logits': logits, 'probs': probs, 'val_loss': loss}
+        self.validation_outputs.append({
+            'labels': y, 'logits': logits, 'probs': probs, 'val_loss': loss
+        })
+        return {'loss': loss}
 
-    def validation_epoch_end(self, outputs):
-        """
-        Aggregate and return the validation metrics
-        Args:
-        outputs: A list of dictionaries of metrics from `validation_step()'
-        Returns: None
-        Returns:
-            A dictionary of loss and metrics, with:
-                val_loss (required): validation_loss
-                log: metrics to be logged to the TensorBoard and metrics.csv
-                progress_bar: metrics to be logged to the progress bar
-                              and metrics.csv
-        """
+    def on_validation_epoch_end(self):
         print('validation epoch end')
-        avg_loss = torch.stack([batch['val_loss'] for batch in outputs]).mean()
-        labels = torch.cat([batch['labels'] for batch in outputs])
-        probs = torch.cat([batch['probs'] for batch in outputs])
+        avg_loss = torch.stack([out['val_loss'] for out in self.validation_outputs]).mean()
+        labels = torch.cat([out['labels'] for out in self.validation_outputs])
+        probs = torch.cat([out['probs'] for out in self.validation_outputs])
         metrics_strategy = self.hparams['metrics_strategy']
 
-        #Log Val Accuracy and Loss
         self.log("val_loss", avg_loss.item())
 
-        #Log Val Metrics
         if self.num_classes == 2:
             metrics = get_metrics(labels, probs)
         else:
-            metrics = get_metrics_multiclass(labels, probs, metrics_strategy) 
+            metrics = get_metrics_multiclass(labels, probs, metrics_strategy)
+
         for metric_name, metric_value in metrics.items():
             self.log(f'val_{metric_name}', metric_value)
 
-    def test_step(self, batch, batch_nb):
-        return self.validation_step(batch, batch_nb) 
+        self.validation_outputs.clear()
 
-    def test_epoch_end(self, outputs):
-        avg_loss = torch.stack([batch['val_loss'] for batch in outputs]).mean()
-        labels = torch.cat([batch['labels'] for batch in outputs])
-        logits = torch.cat([batch['logits'] for batch in outputs])
-        probs = torch.cat([batch['probs'] for batch in outputs])
+    def test_step(self, batch, batch_nb):
+        x, y = batch["embedding_seq"], batch["label"].to(torch.float32)
+        logits = self.forward(x) 
+        loss = self.loss(logits, y.long())
+        probs = torch.softmax(logits, dim=1)
+        self.test_outputs.append({
+            'labels': y, 'logits': logits, 'probs': probs, 'val_loss': loss
+        })
+        return {'loss': loss}
+
+    def on_test_epoch_end(self):
+        avg_loss = torch.stack([out['val_loss'] for out in self.test_outputs]).mean()
+        labels = torch.cat([out['labels'] for out in self.test_outputs])
+        logits = torch.cat([out['logits'] for out in self.test_outputs])
+        probs = torch.cat([out['probs'] for out in self.test_outputs])
         metrics_strategy = self.hparams['metrics_strategy']
 
-        #Log Test Accuracy and Loss
         self.log("test_loss", avg_loss)
 
-        #Log Test Metrics
         if self.num_classes == 2:
             metrics = get_metrics(labels, probs)
         else:
-            metrics = get_metrics_multiclass(labels, probs, metrics_strategy) 
+            metrics = get_metrics_multiclass(labels, probs, metrics_strategy)
+
         for metric_name, metric_value in metrics.items():
             self.log(f'test_{metric_name}', metric_value)
-        metrics['default'] = metrics['auprc']
 
-        return {'avg_test_loss': avg_loss}
+        self.test_outputs.clear()
 
     def configure_optimizers(self):
         learn_rate = self.hparams['learn_rate']
@@ -132,25 +122,14 @@ class MixerTask(pl.LightningModule):
         dataset_path = self.hparams.get('dataset_path', "")
         dataset = MixerDataset(dataset_path, 'train')  
 
-        #Create oversampling weights 
         if oversample:
             ref_dataset = read_pickle(dataset_path)['train']
             counts = {} 
             for example in ref_dataset: 
                 label = str(example[1])
-                if label not in counts:
-                    counts[label] = 1 
-                else:
-                    counts[label] += 1 
-            weights = [] 
-            for example in ref_dataset: 
-                label = str(example[1])
-                weight = 1 / counts[label] 
-                weights.append(weight) 
-            sampler = WeightedRandomSampler(
-                weights=weights,
-                num_samples=len(weights)
-            )
+                counts[label] = counts.get(label, 0) + 1
+            weights = [1 / counts[str(example[1])] for example in ref_dataset]
+            sampler = WeightedRandomSampler(weights=weights, num_samples=len(weights))
             shuffle = False
         else:
             sampler = None
