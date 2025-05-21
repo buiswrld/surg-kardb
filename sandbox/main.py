@@ -16,7 +16,7 @@ import pickle
 - Trying out solely 3D joints 
 """
 
-def train(save_dir="/pasteur/u/bencliu/baseline/experiments/simulation/mixer_results",
+def train(save_dir="/workspace/experiments/simulation/mixer_results",
           exp_name="test_1",
           gpus=1, 
           pretrained=True,
@@ -26,7 +26,7 @@ def train(save_dir="/pasteur/u/bencliu/baseline/experiments/simulation/mixer_res
           max_epochs=100,
           patience=50,
           limit_train_batches=1.0,
-          tb_path="/pasteur/u/bencliu/baseline/experiments/simulation/mixer_results/tb", 
+          tb_path="/workspace/experiments/simulation/mixer_results/tb", 
           loss_fn="BCE",
           learn_rate=1e-4,
           batch_size=16,
