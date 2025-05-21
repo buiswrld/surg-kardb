@@ -53,7 +53,7 @@ def train(save_dir="/workspace/experiments/simulation/mixer_results",
     logger = get_logger(save_dir, exp_name, wandb_hps=wandb_hps, project=proj_name)
     if gpus > 1:
         accelerator='ddp'
-    trainer = Trainer(gpus=gpus,
+    trainer = Trainer(devices=gpus,
                       accelerator=accelerator,
                       logger=logger,
                       callbacks=[get_early_stop_callback(patience),
@@ -110,7 +110,7 @@ def test(ckpt_path=None,
 
 def train_wrapper(save_dir="/pasteur/u/bencliu/baseline/experiments/simulation/mixer_results",
           exp_name="test_1",
-          gpus=1, 
+          devices=1, 
           pretrained=True,
           num_classes=3,
           accelerator=None,
