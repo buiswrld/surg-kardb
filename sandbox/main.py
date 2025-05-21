@@ -58,7 +58,6 @@ def train(save_dir="/workspace/experiments/simulation/mixer_results",
                       logger=logger,
                       callbacks=[get_early_stop_callback(patience),
                                  get_ckpt_callback(save_dir, exp_name, "ckpt")],
-                      weights_save_path=os.path.join(save_dir, exp_name),
                       gradient_clip_val=gradient_clip_val,
                       limit_train_batches=limit_train_batches,
                       max_epochs=max_epochs,
@@ -104,7 +103,7 @@ def test(ckpt_path=None,
     args_dict['results_path'] = results_path 
     args_dict['save_path'] = indiv_save_path 
     args_dict['save_error_analysis'] = save_error_analysis 
-    trainer = Trainer(gpus=1, logger=logger)
+    trainer = Trainer(devices=1, logger=logger)
     task = load_task(ckpt_path, **args_dict) 
     trainer.test(task)
 
