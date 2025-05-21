@@ -7,7 +7,7 @@ from metrics import get_metrics_multiclass, get_metrics
 from dataset import MixerDataset
 import os 
 import pandas as pd
-import pickle5 as pickle 
+import pickle
 from net import MlpMixer
 import torch.nn as nn
 from dataset import MixerDataset

@@ -13,7 +13,7 @@ from matplotlib.cm import ScalarMappable
 
 import copy
 from skspatial.objects import Point, Vector
-import pickle5 as pickle 
+import pickle
 import matplotlib.colors as mcolors
 from tqdm import tqdm 
 

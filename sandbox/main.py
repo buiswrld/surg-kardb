@@ -5,7 +5,7 @@ import torch
 from util import init_exp_folder, Args, get_ckpt_callback, get_early_stop_callback, get_logger
 from model import get_task, load_task
 import json 
-import pickle5 as pickle 
+import pickle
 
 """ 
 - Number of MLP blocks
