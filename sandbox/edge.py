@@ -1,4 +1,5 @@
 import pickle
+import torch
 import numpy as np
 from typing import List, Tuple
 
@@ -113,7 +114,6 @@ def convert_pkl_to_matrices(
 
 
 def main():
-    import torch
 
     pkl_path = "action_dataset_joints_leg_sampled_150.pkl"
     seq_len = 150
@@ -158,3 +158,5 @@ def main():
     assert edge_index.shape[0] == 2
     assert edge_index.max() < seq_len * num_joints, "Edge index has out-of-bound node index"
 
+if __name__ == "__main__":
+    main()
