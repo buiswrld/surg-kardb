@@ -185,7 +185,8 @@ def plot_skeletons_over_time(node_features: torch.Tensor, spatial_pairs: list, n
     def get_joint_coords_at_time(t):
         start = t * num_joints
         end = (t + 1) * num_joints
-        return node_features[start:end].numpy()
+        return node_features[start:end]
+
 
     def plot_skeleton(coords, title, filename):
         plt.figure(figsize=(6, 6))
