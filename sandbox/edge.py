@@ -1,6 +1,7 @@
 import pickle
 import torch
 import numpy as np
+import matplotlib.pyplot as plt
 from typing import List, Tuple
 
 def get_spatial_pairs_from_named_joints() -> List[Tuple[int, int]]:
@@ -157,6 +158,34 @@ def main():
     assert x.shape == (seq_len * num_joints, coords_per_joint)
     assert edge_index.shape[0] == 2
     assert edge_index.max() < seq_len * num_joints, "Edge index has out-of-bound node index"
+
+
+def plot_skeletons_over_time(node_features: torch.Tensor, spatial_pairs: list, num_joints: int, time_steps: list):
+    
+    def get_joint_coords_at_time(t):
+        start = t * num_joints
+        end = (t + 1) * num_joints
+        return node_features[start:end].numpy()
+
+    def plot_skeleton(coords, title):
+        plt.figure(figsize=(6, 6))
+        x = coords[:, 0]
+        y = coords[:, 1]
+        plt.scatter(x, y, c='red')
+        for i, j in spatial_pairs:
+            plt.plot([x[i], x[j]], [y[i], y[j]], 'k-', linewidth=1)
+        for i, (xi, yi) in enumerate(zip(x, y)):
+            plt.text(xi, yi, str(i), fontsize=8, color='blue')
+        plt.title(title)
+        plt.gca().invert_yaxis()
+        plt.axis("equal")
+        plt.grid(True)
+        plt.show()
+
+    for t in time_steps:
+        coords = get_joint_coords_at_time(t)
+        plot_skeleton(coords, f"Skeleton at t = {t}")
+
 
 if __name__ == "__main__":
     main()
