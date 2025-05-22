@@ -3,6 +3,7 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 from typing import List, Tuple
+import os
 
 def get_spatial_pairs_from_named_joints() -> List[Tuple[int, int]]:
     joint_names = [
@@ -159,15 +160,34 @@ def main():
     assert edge_index.shape[0] == 2
     assert edge_index.max() < seq_len * num_joints, "Edge index has out-of-bound node index"
 
+    plot_skeletons_over_time(
+        node_features=x,
+        spatial_pairs=spatial_pairs,
+        num_joints=28,
+        time_steps=[0, 5, 10],
+        output_dir="skeleton_plots"
+    )
 
-def plot_skeletons_over_time(node_features: torch.Tensor, spatial_pairs: list, num_joints: int, time_steps: list):
-    
+
+def plot_skeletons_over_time(node_features: torch.Tensor, spatial_pairs: list, num_joints: int, time_steps: list, output_dir: str = "skeleton_plots"):
+    """
+    Saves 2D skeleton plots at the given time steps using joint coordinates and spatial edges.
+
+    Args:
+        node_features (Tensor): shape (seq_len * num_joints, 3), where each row is [x, y, z]
+        spatial_pairs (list): list of (joint_i, joint_j) edges that define the skeleton
+        num_joints (int): number of joints per frame (e.g., 28)
+        time_steps (list): which time frames to visualize (e.g., [0, 5, 10])
+        output_dir (str): directory to save the plots
+    """
+    os.makedirs(output_dir, exist_ok=True)
+
     def get_joint_coords_at_time(t):
         start = t * num_joints
         end = (t + 1) * num_joints
         return node_features[start:end].numpy()
 
-    def plot_skeleton(coords, title):
+    def plot_skeleton(coords, title, filename):
         plt.figure(figsize=(6, 6))
         x = coords[:, 0]
         y = coords[:, 1]
@@ -180,11 +200,12 @@ def plot_skeletons_over_time(node_features: torch.Tensor, spatial_pairs: list, n
         plt.gca().invert_yaxis()
         plt.axis("equal")
         plt.grid(True)
-        plt.show()
+        plt.savefig(os.path.join(output_dir, filename))
+        plt.close()
 
     for t in time_steps:
         coords = get_joint_coords_at_time(t)
-        plot_skeleton(coords, f"Skeleton at t = {t}")
+        plot_skeleton(coords, f"Skeleton at t = {t}", f"skeleton_t{t}.png")
 
 
 if __name__ == "__main__":
