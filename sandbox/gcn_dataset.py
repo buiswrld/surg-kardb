@@ -2,17 +2,29 @@ import torch
 from torch.utils.data import Dataset
 from torch_geometric.data import Data
 from edge import convert_pkl_to_matrices, get_spatial_pairs_from_named_joints
+import pickle
 
 
 class GNNDataset(Dataset):
-    def __init__(self, pkl_path, seq_len=5, num_joints=28, coords_per_joint=3):
+    def __init__(self, pkl_path, split="train", seq_len=5, num_joints=28, coords_per_joint=3):
+        """
+        Args:
+            pkl_path (str): Path to .pkl file containing {'train': [...], 'valid': [...], 'test': [...]}
+            split (str): One of 'train', 'valid', or 'test'
+            seq_len (int): Number of time steps
+            num_joints (int): Number of joints per frame
+            coords_per_joint (int): Usually 3 for (x, y, z)
+        """
+        assert split in ["train", "valid", "test"], f"Invalid split: {split}"
         spatial_pairs = get_spatial_pairs_from_named_joints()
+
         self.data_list = convert_pkl_to_matrices(
             pkl_path=pkl_path,
             spatial_pairs=spatial_pairs,
             seq_len=seq_len,
             num_joints=num_joints,
-            coords_per_joint=coords_per_joint
+            coords_per_joint=coords_per_joint,
+            split=split
         )
 
     def __len__(self):
@@ -28,18 +40,3 @@ class GNNDataset(Dataset):
         data = Data(x=x, edge_index=edge_index, y=y)
         data.id = sample.get("id", f"sample_{idx}")
         return data
-
-
-def main():
-    dataset = GNNDataset("action_dataset_joints_leg_sampled_5.pkl")
-    
-    for i in range(3):
-        data = dataset[i]
-        print(f"Sample {i}:")
-        print(f"  x shape        : {data.x.shape}")         # (T × J, 3)
-        print(f"  edge_index     : {data.edge_index.shape}")  # (2, num_edges)
-        print(f"  y              : {data.y.item()}")
-        print(f"  id             : {data.id}")
-
-if __name__ == "__main__":
-    main()

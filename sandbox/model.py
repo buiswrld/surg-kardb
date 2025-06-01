@@ -1,7 +1,8 @@
 import pytorch_lightning as pl
 import torch
 import torchvision.transforms as transforms
-from torch.utils.data import DataLoader, WeightedRandomSampler
+from torch.utils.data import WeightedRandomSampler
+from torch_geometric.loader import DataLoader
 import numpy as np
 from metrics import get_metrics_multiclass, get_metrics
 from dataset import MixerDataset
@@ -11,6 +12,7 @@ import pickle
 from net import MlpMixer
 import torch.nn as nn
 from dataset import MixerDataset
+from gcn_dataset import GNNDataset
 
 
 def get_task(args):
@@ -120,7 +122,13 @@ class MixerTask(pl.LightningModule):
     def train_dataloader(self):
         oversample = self.hparams['oversample']
         dataset_path = self.hparams.get('dataset_path', "")
-        dataset = MixerDataset(dataset_path, 'train')  
+        dataset = GNNDataset(
+            pkl_path=self.hparams['dataset_path'],
+            split="train",
+            seq_len=self.hparams.get('seq_len', 5),
+            num_joints=self.hparams.get('num_joints', 28),
+            coords_per_joint=self.hparams.get('coords_per_joint', 3)
+        )
 
         if oversample:
             ref_dataset = read_pickle(dataset_path)['train']
@@ -138,12 +146,24 @@ class MixerTask(pl.LightningModule):
 
     def val_dataloader(self):
         dataset_path = self.hparams.get('dataset_path', "")
-        dataset = MixerDataset(dataset_path, 'valid') 
+        dataset = GNNDataset(
+            pkl_path=self.hparams['dataset_path'],
+            split="valid",
+            seq_len=self.hparams.get('seq_len', 5),
+            num_joints=self.hparams.get('num_joints', 28),
+            coords_per_joint=self.hparams.get('coords_per_joint', 3)
+        )
         return DataLoader(dataset, shuffle=False, batch_size=self.hparams['batch_size'], num_workers=8)
 
     def test_dataloader(self):
         dataset_path = self.hparams.get('dataset_path', "")
-        dataset = MixerDataset(dataset_path, 'test') 
+        dataset = GNNDataset(
+            pkl_path=self.hparams['dataset_path'],
+            split="test",
+            seq_len=self.hparams.get('seq_len', 5),
+            num_joints=self.hparams.get('num_joints', 28),
+            coords_per_joint=self.hparams.get('coords_per_joint', 3)
+        )
         return DataLoader(dataset, shuffle=False, batch_size=self.hparams['batch_size'], num_workers=8)
 
 #HELPER FUNCTIONS 

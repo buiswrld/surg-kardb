@@ -52,7 +52,8 @@ def convert_pkl_to_matrices(
     spatial_pairs: List[Tuple[int, int]],
     seq_len: int,
     num_joints: int = 28,
-    coords_per_joint: int = 3
+    coords_per_joint: int = 3,
+    split: str = "train"  # <-- NEW: split parameter
 ):
     """
     Load a .pkl dataset of joint sequences and convert each sample into:
@@ -92,8 +93,10 @@ def convert_pkl_to_matrices(
     with open(pkl_path, "rb") as f:
         dataset = pickle.load(f)
 
+    assert split in dataset, f"Split '{split}' not found in dataset. check typo or check edge.py"
+
     results = []
-    for sample_array, label, identifier in dataset["train"]:
+    for sample_array, label, identifier in dataset[split]:
         assert sample_array.shape == (seq_len, num_joints * coords_per_joint), \
             f"Expected ({seq_len}, {num_joints * coords_per_joint}), got {sample_array.shape}"
 
