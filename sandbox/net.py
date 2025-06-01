@@ -92,7 +92,7 @@ class GNNModel(nn.Module):
             ]
             in_channels = c_hidden
         layers += [gnn_layer(in_channels=in_channels, out_channels=c_out, **kwargs)]
-        breakpoint() 
+        #breakpoint() 
         self.layers = nn.ModuleList(layers)
 
     def forward(self, x, edge_index):
@@ -107,13 +107,13 @@ class GNNModel(nn.Module):
             # For graph layers, we need to add the "edge_index" tensor as additional input
             # All PyTorch Geometric graph layer inherit the class "MessagePassing", hence
             # we can simply check the class type.
-            breakpoint() 
+            #breakpoint() 
             if isinstance(layer, geom_nn.MessagePassing):
                 x = layer(x, edge_index)
-                breakpoint() 
+                #breakpoint() 
             else:
                 x = layer(x)
-                breakpoint() 
+                #breakpoint() 
         return x
 
 def gnn_sandbox_function():
@@ -124,7 +124,7 @@ def gnn_sandbox_function():
         [1, 0, 2, 1]   # Target nodes
     ])
     output = model(input) 
-    breakpoint() 
+    #breakpoint() 
 
 def named_apply(
         fn: Callable,
@@ -256,10 +256,10 @@ class MlpMixer(nn.Module):
         return x if pre_logits else self.head(x)
 
     def forward(self, x):
-        breakpoint() 
+        #breakpoint() 
         x = self.forward_features(x) # torch.Size([32, 50, 84]) (batch_size, seq_len, embedd_dim)
         x = self.forward_head(x) # torch.Size([32, 3]) 
-        breakpoint() 
+        #breakpoint() 
         return x
 
 
@@ -299,4 +299,4 @@ if __name__ == "__main__":
     model = MlpMixer()
     input = torch.rand((1, 145, 512))
     out = model(input)
-    breakpoint() 
+    #breakpoint() 
