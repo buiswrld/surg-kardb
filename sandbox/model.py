@@ -36,79 +36,87 @@ class MixerTask(pl.LightningModule):
         self.num_classes = num_classes
         self.model = MlpMixer(hmr_embedd_dim=hmr_embedd_dim, seq_len=seq_len, num_classes=num_classes,
                               drop_path_rate=dropout_prob, mlp_ratio=mlp_ratio, num_blocks=num_mlp_blocks)
-        self.input_proj = nn.Linear(self.hparams.get('coords_per_joint', 3), hmr_embedd_dim)
         self.loss = nn.CrossEntropyLoss()
-        self.validation_outputs = []
-        self.test_outputs = []
 
     def forward(self, x):
-        x = self.input_proj(x)
         return self.model(x.to(torch.float32))
 
     def training_step(self, batch, batch_nb):
-        x, y = batch.x, batch.y
+        """
+        Returns:
+            A dictionary of loss and metrics, with:
+                loss(required): loss used to calculate the gradient
+                log: metrics to be logged to the TensorBoard and metrics.csv
+                progress_bar: metrics to be logged to the progress bar
+                              and metrics.csv
+        """
+        x, y = batch["embedding_seq"], batch["label"]
         logits = self.forward(x) 
         loss = self.loss(logits, y.long())
         self.log("train_loss", loss)
-        return {'loss': loss}
+        return {'loss': loss, 'log': {'train_loss': loss}}
 
     def validation_step(self, batch, batch_nb):
-        x, y = batch.x, batch.y
+        x, y = batch["embedding_seq"], batch["label"].to(torch.float32)
         logits = self.forward(x) 
         loss = self.loss(logits, y.long())
         probs = torch.softmax(logits, dim=1)
-        self.validation_outputs.append({
-            'labels': y, 'logits': logits, 'probs': probs, 'val_loss': loss
-        })
-        return {'loss': loss}
+        breakpoint() 
+        return {'labels': y, 'logits': logits, 'probs': probs, 'val_loss': loss}
 
-    def on_validation_epoch_end(self):
+    def validation_epoch_end(self, outputs):
+        """
+        Aggregate and return the validation metrics
+        Args:
+        outputs: A list of dictionaries of metrics from `validation_step()'
+        Returns: None
+        Returns:
+            A dictionary of loss and metrics, with:
+                val_loss (required): validation_loss
+                log: metrics to be logged to the TensorBoard and metrics.csv
+                progress_bar: metrics to be logged to the progress bar
+                              and metrics.csv
+        """
         print('validation epoch end')
-        avg_loss = torch.stack([out['val_loss'] for out in self.validation_outputs]).mean()
-        labels = torch.cat([out['labels'] for out in self.validation_outputs])
-        probs = torch.cat([out['probs'] for out in self.validation_outputs])
+        avg_loss = torch.stack([batch['val_loss'] for batch in outputs]).mean()
+        labels = torch.cat([batch['labels'] for batch in outputs])
+        probs = torch.cat([batch['probs'] for batch in outputs])
         metrics_strategy = self.hparams['metrics_strategy']
 
+        #Log Val Accuracy and Loss
         self.log("val_loss", avg_loss.item())
 
+        #Log Val Metrics
         if self.num_classes == 2:
             metrics = get_metrics(labels, probs)
         else:
-            metrics = get_metrics_multiclass(labels, probs, metrics_strategy)
-
+            metrics = get_metrics_multiclass(labels, probs, metrics_strategy) 
         for metric_name, metric_value in metrics.items():
             self.log(f'val_{metric_name}', metric_value)
 
-        self.validation_outputs.clear()
-
     def test_step(self, batch, batch_nb):
-        x, y = batch.x, batch.y
-        logits = self.forward(x) 
-        loss = self.loss(logits, y.long())
-        probs = torch.softmax(logits, dim=1)
-        self.test_outputs.append({
-            'labels': y, 'logits': logits, 'probs': probs, 'val_loss': loss
-        })
-        return {'loss': loss}
+        return self.validation_step(batch, batch_nb) 
 
-    def on_test_epoch_end(self):
-        avg_loss = torch.stack([out['val_loss'] for out in self.test_outputs]).mean()
-        labels = torch.cat([out['labels'] for out in self.test_outputs])
-        logits = torch.cat([out['logits'] for out in self.test_outputs])
-        probs = torch.cat([out['probs'] for out in self.test_outputs])
+    def test_epoch_end(self, outputs):
+        avg_loss = torch.stack([batch['val_loss'] for batch in outputs]).mean()
+        labels = torch.cat([batch['labels'] for batch in outputs])
+        logits = torch.cat([batch['logits'] for batch in outputs])
+        probs = torch.cat([batch['probs'] for batch in outputs])
         metrics_strategy = self.hparams['metrics_strategy']
 
+        #Log Test Accuracy and Loss
         self.log("test_loss", avg_loss)
 
+        #Log Test Metrics
         if self.num_classes == 2:
             metrics = get_metrics(labels, probs)
         else:
-            metrics = get_metrics_multiclass(labels, probs, metrics_strategy)
-
+            metrics = get_metrics_multiclass(labels, probs, metrics_strategy) 
         for metric_name, metric_value in metrics.items():
             self.log(f'test_{metric_name}', metric_value)
+        metrics['default'] = metrics['auprc']
 
-        self.test_outputs.clear()
+        return {'avg_test_loss': avg_loss}
 
     def configure_optimizers(self):
         learn_rate = self.hparams['learn_rate']
@@ -124,22 +132,26 @@ class MixerTask(pl.LightningModule):
     def train_dataloader(self):
         oversample = self.hparams['oversample']
         dataset_path = self.hparams.get('dataset_path', "")
-        dataset = GNNDataset(
-            pkl_path=self.hparams['dataset_path'],
-            split="train",
-            seq_len=self.hparams.get('seq_len', 5),
-            num_joints=self.hparams.get('num_joints', 28),
-            coords_per_joint=self.hparams.get('coords_per_joint', 3)
-        )
+        dataset = MixerDataset(dataset_path, 'train')  
 
         if oversample:
             ref_dataset = read_pickle(dataset_path)['train']
             counts = {} 
             for example in ref_dataset: 
                 label = str(example[1])
-                counts[label] = counts.get(label, 0) + 1
-            weights = [1 / counts[str(example[1])] for example in ref_dataset]
-            sampler = WeightedRandomSampler(weights=weights, num_samples=len(weights))
+                if label not in counts:
+                    counts[label] = 1 
+                else:
+                    counts[label] += 1 
+            weights = [] 
+            for example in ref_dataset: 
+                label = str(example[1])
+                weight = 1 / counts[label] 
+                weights.append(weight) 
+            sampler = WeightedRandomSampler(
+                weights=weights,
+                num_samples=len(weights)
+            )
             shuffle = False
         else:
             sampler = None
@@ -148,24 +160,12 @@ class MixerTask(pl.LightningModule):
 
     def val_dataloader(self):
         dataset_path = self.hparams.get('dataset_path', "")
-        dataset = GNNDataset(
-            pkl_path=self.hparams['dataset_path'],
-            split="valid",
-            seq_len=self.hparams.get('seq_len', 5),
-            num_joints=self.hparams.get('num_joints', 28),
-            coords_per_joint=self.hparams.get('coords_per_joint', 3)
-        )
+        dataset = MixerDataset(dataset_path, 'valid') 
         return DataLoader(dataset, shuffle=False, batch_size=self.hparams['batch_size'], num_workers=8)
 
     def test_dataloader(self):
         dataset_path = self.hparams.get('dataset_path', "")
-        dataset = GNNDataset(
-            pkl_path=self.hparams['dataset_path'],
-            split="test",
-            seq_len=self.hparams.get('seq_len', 5),
-            num_joints=self.hparams.get('num_joints', 28),
-            coords_per_joint=self.hparams.get('coords_per_joint', 3)
-        )
+        dataset = MixerDataset(dataset_path, 'test') 
         return DataLoader(dataset, shuffle=False, batch_size=self.hparams['batch_size'], num_workers=8)
 
 #HELPER FUNCTIONS 
