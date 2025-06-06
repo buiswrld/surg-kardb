@@ -36,11 +36,13 @@ class MixerTask(pl.LightningModule):
         self.num_classes = num_classes
         self.model = MlpMixer(hmr_embedd_dim=hmr_embedd_dim, seq_len=seq_len, num_classes=num_classes,
                               drop_path_rate=dropout_prob, mlp_ratio=mlp_ratio, num_blocks=num_mlp_blocks)
+        self.input_proj = nn.Linear(self.hparams.get('coords_per_joint', 3), hmr_embedd_dim)
         self.loss = nn.CrossEntropyLoss()
         self.validation_outputs = []
         self.test_outputs = []
 
     def forward(self, x):
+        x = self.input_proj(x)
         return self.model(x.to(torch.float32))
 
     def training_step(self, batch, batch_nb):
