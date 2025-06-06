@@ -44,14 +44,14 @@ class MixerTask(pl.LightningModule):
         return self.model(x.to(torch.float32))
 
     def training_step(self, batch, batch_nb):
-        x, y = batch["embedding_seq"], batch["label"]
+        x, y = batch.x, batch.y
         logits = self.forward(x) 
         loss = self.loss(logits, y.long())
         self.log("train_loss", loss)
         return {'loss': loss}
 
     def validation_step(self, batch, batch_nb):
-        x, y = batch["embedding_seq"], batch["label"].to(torch.float32)
+        x, y = batch.x, batch.y
         logits = self.forward(x) 
         loss = self.loss(logits, y.long())
         probs = torch.softmax(logits, dim=1)
@@ -80,7 +80,7 @@ class MixerTask(pl.LightningModule):
         self.validation_outputs.clear()
 
     def test_step(self, batch, batch_nb):
-        x, y = batch["embedding_seq"], batch["label"].to(torch.float32)
+        x, y = batch.x, batch.y
         logits = self.forward(x) 
         loss = self.loss(logits, y.long())
         probs = torch.softmax(logits, dim=1)
