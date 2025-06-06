@@ -200,7 +200,6 @@ class GNNTask(pl.LightningModule):
             num_layers=self.num_layers,
             layer_name=self.layer_name,
             dp_rate=self.dp_rate,
-            attn_heads=self.attn_heads,
         )
         self.loss = nn.CrossEntropyLoss()
         self._val_outputs, self._test_outputs = [], []
