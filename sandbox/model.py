@@ -59,6 +59,7 @@ class MixerTask(pl.LightningModule):
         return {'loss': loss}
 
     def on_validation_epoch_end(self):
+        print("validation is working correctly")
         print('validation epoch end')
         avg_loss = torch.stack([out['val_loss'] for out in self.validation_outputs]).mean()
         labels = torch.cat([out['labels'] for out in self.validation_outputs])
