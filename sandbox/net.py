@@ -24,6 +24,7 @@ import torch.optim as optim
 import torch_geometric
 import torch_geometric.data as geom_data
 import torch_geometric.nn as geom_nn
+from torch_geometric.nn import global_mean_pool
 gnn_layer_by_name = {"GCN": geom_nn.GCNConv, "GAT": geom_nn.GATConv, "GraphConv": geom_nn.GraphConv}
 
 """ 
@@ -95,7 +96,7 @@ class GNNModel(nn.Module):
         #breakpoint() 
         self.layers = nn.ModuleList(layers)
 
-    def forward(self, x, edge_index):
+    def forward(self, x, edge_index, batch = None):
         """Forward.
 
         Args:
@@ -103,6 +104,9 @@ class GNNModel(nn.Module):
             edge_index: List of vertex index pairs representing the edges in the graph (PyTorch geometric notation)
 
         """
+
+        if batch is None:
+            batch = torch.zeros(x.size(0), dtype=torch.long, device=x.device)
         for layer in self.layers:
             # For graph layers, we need to add the "edge_index" tensor as additional input
             # All PyTorch Geometric graph layer inherit the class "MessagePassing", hence
@@ -114,6 +118,7 @@ class GNNModel(nn.Module):
             else:
                 x = layer(x)
                 #breakpoint() 
+        x = global_mean_pool(x, batch) if batch is not None else x
         return x
 
 def gnn_sandbox_function():
