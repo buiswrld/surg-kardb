@@ -34,7 +34,7 @@ class GNNDataset(Dataset):
         sample = self.data_list[idx]
 
         x = torch.tensor(sample["x"], dtype=torch.float)
-        edge_index = torch.tensor(sample["edge_index"], dtype=torch.long)
+        edge_index = sample["edge_index"].long()
         y = torch.tensor([sample["y"]], dtype=torch.long)
 
         data = Data(x=x, edge_index=edge_index, y=y)
