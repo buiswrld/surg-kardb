@@ -2,14 +2,15 @@ import pytorch_lightning as pl
 import torch
 import torchvision.transforms as transforms
 from torch.utils.data import WeightedRandomSampler
-from torch_geometric.loader import DataLoader
+from torch.utils.data import DataLoader
+from torch_geometric.data import DataLoader as GeoDataLoader
 import numpy as np
 from metrics import get_metrics_multiclass, get_metrics
 from dataset import MixerDataset
 import os 
 import pandas as pd
 import pickle
-from net import MlpMixer
+from net import MlpMixer, GNNModel
 import torch.nn as nn
 from dataset import MixerDataset
 from gcn_dataset import GNNDataset
@@ -176,3 +177,105 @@ def write_pickle(data_object, path):
 def read_pickle(path):
     with open(path, 'rb') as handle:
         return pickle.load(handle, encoding='latin1')
+    
+
+class GNNTask(pl.LightningModule):
+    """Graph-specific Lightning task"""
+    def __init__(self, hparams: dict):
+        super().__init__()
+        self.save_hyperparameters(hparams)
+        self.c_in        = self.hparams.get("c_in", 3)
+        self.c_hidden    = self.hparams.get("c_hidden", 128)
+        self.num_classes = self.hparams.get("num_classes", 2)
+        self.attn_heads  = self.hparams.get("attn_heads", 1)
+        self.num_layers  = self.hparams.get("num_layers", 5)
+        self.layer_name  = self.hparams.get("layer_name", "GCN")
+        self.dp_rate     = self.hparams.get("dp_rate", 0.1)
+        self.model = GNNModel(
+            c_in=self.c_in,
+            c_hidden=self.c_hidden,
+            c_out=self.num_classes,
+            num_layers=self.num_layers,
+            layer_name=self.layer_name,
+            dp_rate=self.dp_rate,
+            attn_heads=self.attn_heads,
+        )
+        self.loss = nn.CrossEntropyLoss()
+        self._val_outputs, self._test_outputs = [], []
+
+    def forward(self, x, edge_index, batch_vec):
+        return self.model(x, edge_index, batch_vec)
+
+    def _shared_step(self, batch):
+        logits = self.forward(batch.x, batch.edge_index, batch.batch)
+        loss   = self.loss(logits, batch.y.long().view(-1))
+        probs  = torch.softmax(logits, dim=1)
+        return loss, probs
+
+    def training_step(self, batch, _):
+        loss, _ = self._shared_step(batch)
+        self.log("train_loss", loss, prog_bar=True)
+        return loss
+
+    def validation_step(self, batch, _):
+        loss, probs = self._shared_step(batch)
+        self._val_outputs.append((batch.y, probs, loss))
+
+    def on_validation_epoch_end(self):
+        if not self._val_outputs:
+            return
+        labels, probs, losses = zip(*self._val_outputs)
+        labels = torch.cat(labels)
+        probs  = torch.cat(probs)
+        loss   = torch.stack(losses).mean()
+        self.log("val_loss", loss, prog_bar=True)
+
+        metric_fn = get_metrics if self.num_classes == 2 else get_metrics_multiclass
+        for k, v in metric_fn(labels, probs,
+                              self.hparams.get("metrics_strategy", "macro")).items():
+            self.log(f"val_{k}", v, prog_bar=True)
+        self._val_outputs.clear()
+
+    def test_step(self, batch, _):
+        loss, probs = self._shared_step(batch)
+        self._test_outputs.append((batch.y, probs, loss))
+
+    def on_test_epoch_end(self):
+        if not self._test_outputs:
+            return
+        labels, probs, losses = zip(*self._test_outputs)
+        labels = torch.cat(labels)
+        probs  = torch.cat(probs)
+        loss   = torch.stack(losses).mean()
+        self.log("test_loss", loss)
+
+        metric_fn = get_metrics if self.num_classes == 2 else get_metrics_multiclass
+        for k, v in metric_fn(labels, probs,
+                              self.hparams.get("metrics_strategy", "macro")).items():
+            self.log(f"test_{k}", v)
+        self._test_outputs.clear()
+
+    def configure_optimizers(self):
+        lr = self.hparams.get("learn_rate", 3e-4)
+        wd = self.hparams.get("weight_decay", 0.0)
+        return torch.optim.Adam(self.parameters(), lr=lr, weight_decay=wd)
+
+    def _loader(self, split: str, shuffle: bool):
+        ds = GNNDataset(
+            pkl_path   = self.hparams["dataset_path"],
+            split      = split,
+            seq_len    = self.hparams.get("seq_len", 5),
+            num_joints = self.hparams.get("num_joints", 28),
+            coords_per_joint = self.hparams.get("coords_per_joint", 3),
+        )
+        return GeoDataLoader(
+            ds,
+            batch_size = self.hparams.get("batch_size", 32),
+            shuffle    = shuffle,
+            num_workers= self.hparams.get("num_workers", 8),
+            pin_memory = self.hparams.get("pin_memory", True),
+        )
+
+    def train_dataloader(self): return self._loader("train", shuffle=True)
+    def val_dataloader  (self): return self._loader("valid", shuffle=False)
+    def test_dataloader (self): return self._loader("test" , shuffle=False)
