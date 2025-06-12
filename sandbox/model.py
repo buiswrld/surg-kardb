@@ -268,6 +268,7 @@ class GNNTask(pl.LightningModule):
             seq_len    = self.hparams.get("seq_len", 5),
             num_joints = self.hparams.get("num_joints", 28),
             coords_per_joint = self.hparams.get("coords_per_joint", 3),
+            exclude_groups = self.hparams.get("exclude_groups", [])
         )
         return GeoDataLoader(
             ds,
