@@ -6,7 +6,7 @@ import pickle
 
 
 class GNNDataset(Dataset):
-    def __init__(self, pkl_path, split="train", seq_len=5, num_joints=28, coords_per_joint=3):
+    def __init__(self, pkl_path, split="train", seq_len=5, num_joints=28, coords_per_joint=3, exclude_groups=[]):
         """
         Args:
             pkl_path (str): Path to .pkl file containing {'train': [...], 'valid': [...], 'test': [...]}
@@ -16,6 +16,9 @@ class GNNDataset(Dataset):
             coords_per_joint (int): Usually 3 for (x, y, z)
         """
         assert split in ["train", "valid", "test"], f"Invalid split: {split}"
+
+        self.exclude_groups = exclude_groups  # [ADDED]
+
         spatial_pairs = get_spatial_pairs_from_named_joints()
 
         self.data_list = convert_pkl_to_matrices(
@@ -40,3 +43,7 @@ class GNNDataset(Dataset):
         data = Data(x=x, edge_index=edge_index, y=y)
         data.id = sample.get("id", f"sample_{idx}")
         return data
+    
+    def reshape_joints(self, input_array):  # [ADDED]
+        length = input_array.shape[0] if input_array.shape != (84,) else 1
+        return input_array.reshape(length, 28, 3)
