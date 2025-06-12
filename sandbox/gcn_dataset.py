@@ -37,12 +37,26 @@ class GNNDataset(Dataset):
         sample = self.data_list[idx]
 
         x = torch.tensor(sample["x"], dtype=torch.float)
+        x = self.reshape_joints(x)  # shape (T, 28, 3)
+
+        if self.exclude_groups:
+            from joints import MAIN_JOINTS, JOINT_NAMES_GNN_ABLATIONS as JOINT_NAMES, JOINT_GROUPS
+            excluded = set()
+            for group in self.exclude_groups:
+                excluded.update(JOINT_GROUPS[group])
+            joints_to_keep = [j for j in JOINT_NAMES if j not in excluded]
+            joint_indices = [MAIN_JOINTS.index(j) for j in joints_to_keep]
+            x = x[:, joint_indices, :]
+
+        x = x.reshape(-1, 3)
+
         edge_index = sample["edge_index"].long()
         y = torch.tensor([sample["y"]], dtype=torch.long)
 
         data = Data(x=x, edge_index=edge_index, y=y)
         data.id = sample.get("id", f"sample_{idx}")
         return data
+
     
     def reshape_joints(self, input_array):  # [ADDED]
         length = input_array.shape[0] if input_array.shape != (84,) else 1
