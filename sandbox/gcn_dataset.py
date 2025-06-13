@@ -18,6 +18,8 @@ class GNNDataset(Dataset):
         assert split in ["train", "valid", "test"], f"Invalid split: {split}"
 
         self.exclude_groups = exclude_groups  # [ADDED]
+        self.num_joints = num_joints
+
 
         spatial_pairs = get_spatial_pairs_from_named_joints()
 
@@ -40,12 +42,9 @@ class GNNDataset(Dataset):
         x = self.reshape_joints(x)  # shape (T, 28, 3)
 
         if self.exclude_groups:
-            from joints import MAIN_JOINTS, JOINT_NAMES_GNN_ABLATIONS as JOINT_NAMES, JOINT_GROUPS
-            excluded = set()
-            for group in self.exclude_groups:
-                excluded.update(JOINT_GROUPS[group])
-            joints_to_keep = [j for j in JOINT_NAMES if j not in excluded]
-            joint_indices = [MAIN_JOINTS.index(j) for j in joints_to_keep]
+            from joints import MAIN_JOINTS
+            excluded_joints = set(self.exclude_groups)  # e.g., {"left_ankle"}
+            joint_indices = [i for i, j in enumerate(MAIN_JOINTS) if j not in excluded_joints]
             x = x[:, joint_indices, :]
 
         x = x.reshape(-1, 3)
@@ -58,6 +57,6 @@ class GNNDataset(Dataset):
         return data
 
     
-    def reshape_joints(self, input_array):  # [ADDED]
-        length = input_array.shape[0] if input_array.shape != (84,) else 1
-        return input_array.reshape(length, 28, 3)
+    def reshape_joints(self, input_array):
+        length = input_array.shape[0] // self.num_joints
+        return input_array.reshape(length, self.num_joints, -1)
