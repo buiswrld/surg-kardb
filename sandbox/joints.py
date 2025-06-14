@@ -244,6 +244,7 @@ knee_joints = ['left_knee', 'right_knee']
 ankle_joints = ['left_ankle', 'right_ankle']
 foot_joints = ['left_foot', 'right_foot']
 kiran_pose = ["left_eye", "left_shoulder", "right_knee", "right_ankle"]
+anti_kiran_pose = ["right_eye", "right_shoulder", "left_knee", "left_ankle"]
 left_arm_joints = ['left_shoulder', 'left_elbow', 'left_wrist']
 right_arm_joints = ['right_shoulder', 'right_elbow', 'right_wrist']
 left_leg_joints = ['left_hip', 'left_knee', 'left_ankle', 'left_foot']
@@ -271,6 +272,7 @@ right_arm_indices = [JOINT_NAMES.index(j) for j in right_arm_joints if j in JOIN
 left_leg_indices = [JOINT_NAMES.index(j) for j in left_leg_joints if j in JOINT_NAMES]
 right_leg_indices = [JOINT_NAMES.index(j) for j in right_leg_joints if j in JOINT_NAMES]
 hip_indices = [JOINT_NAMES.index(j) for j in hip_joints if j in JOINT_NAMES]
+anti_kiran_indices = [JOINT_NAMES.index(j) for j in anti_kiran_pose if j in JOINT_NAMES]
 
 
 # JOINT CLASS ABLATION 
