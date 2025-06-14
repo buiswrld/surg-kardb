@@ -227,14 +227,50 @@ head_pose = ["head"]
 thorax_pose = ['left_shoulder','right_shoulder', 'left_collar', 'right_collar', 'neck'] 
 leg_pose = ['left_knee','right_knee','left_ankle','right_ankle','left_foot','right_foot']
 spine_pose = ['spine1', 'spine2', 'spine3',]
+left_side_joints = ['left_hip', 'left_knee', 'left_ankle', 'left_foot',
+    'left_collar', 'left_shoulder', 'left_elbow', 'left_wrist',
+    'left_eye', 'left_ear']
+right_side_joints = ['right_hip', 'right_knee', 'right_ankle', 'right_foot',
+    'right_collar', 'right_shoulder', 'right_elbow', 'right_wrist',
+    'right_eye', 'right_ear']
+upper_body_joints = ['spine1', 'spine2', 'spine3', 'neck', 'head', 'jaw', 'nose',
+    'left_eye', 'right_eye', 'left_ear', 'right_ear',
+    'left_collar', 'right_collar', 'left_shoulder', 'right_shoulder',
+    'left_elbow', 'right_elbow', 'left_wrist', 'right_wrist']
+lower_body_joints = ['pelvis', 'left_hip', 'right_hip',
+    'left_knee', 'right_knee', 'left_ankle', 'right_ankle',
+    'left_foot', 'right_foot']
+knee_joints = ['left_knee', 'right_knee']
+ankle_joints = ['left_ankle', 'right_ankle']
+foot_joints = ['left_foot', 'right_foot']
+kiran_pose = ["left_eye", "left_shoulder", "right_knee", "right_ankle"]
+left_arm_joints = ['left_shoulder', 'left_elbow', 'left_wrist']
+right_arm_joints = ['right_shoulder', 'right_elbow', 'right_wrist']
+left_leg_joints = ['left_hip', 'left_knee', 'left_ankle', 'left_foot']
+right_leg_joints = ['right_hip', 'right_knee', 'right_ankle', 'right_foot']
+hip_joints = ['left_hip', 'right_hip']
 
+
+# Indices for the joints
+left_side_indices = [JOINT_NAMES.index(j) for j in left_side_joints if j in JOINT_NAMES]
+lower_body_indices = [JOINT_NAMES.index(j) for j in lower_body_joints if j in JOINT_NAMES]
+upper_body_indices = [JOINT_NAMES.index(j) for j in upper_body_joints if j in JOINT_NAMES]
+right_side_indices = [JOINT_NAMES.index(j) for j in right_side_joints if j in JOINT_NAMES]
 pelvic_indices_pose = [SMPL_JOINT_NAMES.index(joint) for joint in pelvic_pose]
 arm_indices_pose = [SMPL_JOINT_NAMES.index(joint) for joint in arm_pose]
 head_indices_pose = [SMPL_JOINT_NAMES.index(joint) for joint in head_pose]
 thorax_indices_pose = [SMPL_JOINT_NAMES.index(joint) for joint in thorax_pose]
 leg_indices_pose = [SMPL_JOINT_NAMES.index(joint) for joint in leg_pose]
 spine_indices_pose = [SMPL_JOINT_NAMES.index(joint) for joint in spine_pose]
-
+knee_indices = [JOINT_NAMES.index(j) for j in knee_joints if j in JOINT_NAMES]
+ankle_indices = [JOINT_NAMES.index(j) for j in ankle_joints if j in JOINT_NAMES]
+foot_indices = [JOINT_NAMES.index(j) for j in foot_joints if j in JOINT_NAMES]
+kiran_indices = [JOINT_NAMES.index(j) for j in kiran_pose if j in JOINT_NAMES]
+left_arm_indices = [JOINT_NAMES.index(j) for j in left_arm_joints if j in JOINT_NAMES]
+right_arm_indices = [JOINT_NAMES.index(j) for j in right_arm_joints if j in JOINT_NAMES]
+left_leg_indices = [JOINT_NAMES.index(j) for j in left_leg_joints if j in JOINT_NAMES]
+right_leg_indices = [JOINT_NAMES.index(j) for j in right_leg_joints if j in JOINT_NAMES]
+hip_indices = [JOINT_NAMES.index(j) for j in hip_joints if j in JOINT_NAMES]
 
 
 # JOINT CLASS ABLATION 
