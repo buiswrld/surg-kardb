@@ -41,7 +41,7 @@ class GNNDataset(Dataset):
         x = torch.tensor(sample["x"], dtype=torch.float)
         x = self.reshape_joints(x)  # shape (T, 28, 3)
 
-        if self.exclude_groups:
+        if not self.exclude_groups.empty():
             from joints import MAIN_JOINTS
             excluded_joints = set(self.exclude_groups)  # e.g., {"left_ankle"}
             joint_indices = [i for i, j in enumerate(MAIN_JOINTS) if j not in excluded_joints]

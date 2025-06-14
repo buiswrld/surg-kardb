@@ -43,11 +43,13 @@ def train(save_dir="/workspace/experiments/simulation/mixer_results",
           mlp_ratio=(0.5, 4.0), 
           dropout_prob=0.0, 
           metrics_strategy="weighted",
+          exclude_groups=[],
           oversample=False 
           ):
     """
     Run Trainer 
     """
+    
     args = Args(locals())
     init_exp_folder(args)
     task = get_task(args)

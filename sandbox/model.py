@@ -193,6 +193,7 @@ class GNNTask(pl.LightningModule):
         self.num_layers  = self.hparams.get("num_layers", 5)
         self.layer_name  = self.hparams.get("layer_name", "GCN")
         self.dp_rate     = self.hparams.get("dp_rate", 0.1)
+        self.exclude_groups     = self.hparams.get("exclude_groups", [])
         self.model = GNNModel(
             c_in=self.c_in,
             c_hidden=self.c_hidden,
