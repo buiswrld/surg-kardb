@@ -204,11 +204,11 @@ class GNNTask(pl.LightningModule):
         self.loss = nn.CrossEntropyLoss()
         self._val_outputs, self._test_outputs = [], []
 
-    def forward(self, x, edge_index, batch_vec):
-        return self.model(x, edge_index, batch_vec)
+    def forward(self, x, edge_index, batch_vec, metrics=None):
+        return self.model(x, edge_index, batch_vec, metrics)
 
     def _shared_step(self, batch):
-        logits = self.forward(batch.x, batch.edge_index, batch.batch)
+        logits = self.forward(batch.x, batch.edge_index, batch.batch, batch.metrics)
         loss   = self.loss(logits, batch.y.long().view(-1))
         probs  = torch.softmax(logits, dim=1)
         return loss, probs
