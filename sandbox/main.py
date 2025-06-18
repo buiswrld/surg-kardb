@@ -17,6 +17,9 @@ import pickle
 """
 
 def train(save_dir="/workspace/experiments/simulation/mixer_results",
+          c_in=3,            
+          c_hidden=128,            
+          num_layers=5,       
           exp_name="test_1",
           gpus=1, 
           pretrained=True,

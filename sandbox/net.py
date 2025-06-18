@@ -24,6 +24,7 @@ import torch.optim as optim
 import torch_geometric
 import torch_geometric.data as geom_data
 import torch_geometric.nn as geom_nn
+from torch_geometric.nn import global_mean_pool
 gnn_layer_by_name = {"GCN": geom_nn.GCNConv, "GAT": geom_nn.GATConv, "GraphConv": geom_nn.GraphConv}
 
 """ 
@@ -92,10 +93,10 @@ class GNNModel(nn.Module):
             ]
             in_channels = c_hidden
         layers += [gnn_layer(in_channels=in_channels, out_channels=c_out, **kwargs)]
-        breakpoint() 
+        #breakpoint() 
         self.layers = nn.ModuleList(layers)
 
-    def forward(self, x, edge_index):
+    def forward(self, x, edge_index, batch = None):
         """Forward.
 
         Args:
@@ -103,17 +104,21 @@ class GNNModel(nn.Module):
             edge_index: List of vertex index pairs representing the edges in the graph (PyTorch geometric notation)
 
         """
+
+        if batch is None:
+            batch = torch.zeros(x.size(0), dtype=torch.long, device=x.device)
         for layer in self.layers:
             # For graph layers, we need to add the "edge_index" tensor as additional input
             # All PyTorch Geometric graph layer inherit the class "MessagePassing", hence
             # we can simply check the class type.
-            breakpoint() 
+            #breakpoint() 
             if isinstance(layer, geom_nn.MessagePassing):
                 x = layer(x, edge_index)
-                breakpoint() 
+                #breakpoint() 
             else:
                 x = layer(x)
-                breakpoint() 
+                #breakpoint() 
+        x = global_mean_pool(x, batch) if batch is not None else x
         return x
 
 def gnn_sandbox_function():
@@ -124,7 +129,7 @@ def gnn_sandbox_function():
         [1, 0, 2, 1]   # Target nodes
     ])
     output = model(input) 
-    breakpoint() 
+    #breakpoint() 
 
 def named_apply(
         fn: Callable,
@@ -256,10 +261,10 @@ class MlpMixer(nn.Module):
         return x if pre_logits else self.head(x)
 
     def forward(self, x):
-        breakpoint() 
+        #breakpoint() 
         x = self.forward_features(x) # torch.Size([32, 50, 84]) (batch_size, seq_len, embedd_dim)
         x = self.forward_head(x) # torch.Size([32, 3]) 
-        breakpoint() 
+        #breakpoint() 
         return x
 
 
@@ -299,4 +304,4 @@ if __name__ == "__main__":
     model = MlpMixer()
     input = torch.rand((1, 145, 512))
     out = model(input)
-    breakpoint() 
+    #breakpoint() 
