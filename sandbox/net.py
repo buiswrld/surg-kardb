@@ -103,7 +103,7 @@ class GNNModel(nn.Module):
             nn.Linear(128, c_out),
         )
 
-    def forward(self, x, edge_index, batch = None):
+    def forward(self, x, edge_index, batch = None, metrics = None):
         """Forward.
 
         Args:
@@ -126,6 +126,9 @@ class GNNModel(nn.Module):
                 x = layer(x)
                 #breakpoint() 
         x = global_mean_pool(x, batch) if batch is not None else x
+        if metrics is not None:
+            x = torch.cat([x, metrics], dim=1)
+        x = self.head(x)
         return x
 
 def gnn_sandbox_function():
