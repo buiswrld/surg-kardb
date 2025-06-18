@@ -66,6 +66,7 @@ class GNNModel(nn.Module):
         num_layers=2,
         layer_name="GCN",
         dp_rate=0.1,
+        metrics_dim = 0, # number of empirical metrics
         **kwargs,
     ):
         """GNNModel.
@@ -95,6 +96,12 @@ class GNNModel(nn.Module):
         layers += [gnn_layer(in_channels=in_channels, out_channels=c_out, **kwargs)]
         #breakpoint() 
         self.layers = nn.ModuleList(layers)
+        self.head = nn.Sequential(
+            nn.Linear(c_out + metrics_dim, 128),
+            nn.ReLU(),
+            nn.Dropout(dp_rate),
+            nn.Linear(128, c_out),
+        )
 
     def forward(self, x, edge_index, batch = None):
         """Forward.
