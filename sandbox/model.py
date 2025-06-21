@@ -193,6 +193,7 @@ class GNNTask(pl.LightningModule):
         self.num_layers  = self.hparams.get("num_layers", 5)
         self.layer_name  = self.hparams.get("layer_name", "GCN")
         self.dp_rate     = self.hparams.get("dp_rate", 0.1)
+        self.metrics_dim = self.hparams.get("metrics_dim", 6)
         self.model = GNNModel(
             c_in=self.c_in,
             c_hidden=self.c_hidden,
@@ -200,6 +201,7 @@ class GNNTask(pl.LightningModule):
             num_layers=self.num_layers,
             layer_name=self.layer_name,
             dp_rate=self.dp_rate,
+            metrics_dim=self.metrics_dim,
         )
         self.loss = nn.CrossEntropyLoss()
         self._val_outputs, self._test_outputs = [], []
