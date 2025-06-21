@@ -14,7 +14,7 @@ import pickle
 import io
 import matplotlib.pyplot as plt
 import time
-from util import get_time_slice, apply_transform, preprocess
+from empirical.util import get_time_slice, apply_transform, preprocess
 from scipy.spatial.distance import euclidean
 
 """

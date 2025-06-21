@@ -3,7 +3,7 @@ import pickle
 import os
 import torch
 import io
-from util import read_pickle, apply_transform
+from empirical.util import read_pickle, apply_transform
 
 def compute_gaze_vector(joints):
     """

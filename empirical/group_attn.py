@@ -15,7 +15,7 @@ import os
 import io
 from itertools import combinations
 import time
-from util import read_pickle, apply_transform, get_time_slice, preprocess
+from empirical.util import read_pickle, apply_transform, get_time_slice, preprocess
 
 """
 WALKTHROUGH:

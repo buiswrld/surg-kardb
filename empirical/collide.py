@@ -7,7 +7,7 @@ import random
 import io
 import os
 import time
-from util import CPU_Unpickler, read_pickle, apply_transform, get_time_slice, preprocess, apply_padding
+from empirical.util import CPU_Unpickler, read_pickle, apply_transform, get_time_slice, preprocess, apply_padding
 
 def get_pelvis(joints):
     """

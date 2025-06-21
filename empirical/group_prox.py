@@ -6,7 +6,7 @@ import io
 from sklearn.cluster import KMeans
 from scipy.spatial.distance import euclidean
 from tqdm import tqdm
-from util import read_pickle, apply_transform
+from empirical.util import read_pickle, apply_transform
 
 def process_files(folder_path, debug=False):
     paths = sorted([os.path.join(folder_path, f) for f in os.listdir(folder_path) if f.endswith('.pkl')])

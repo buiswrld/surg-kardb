@@ -1,4 +1,4 @@
-import pickle5 as pickle
+import pickle
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -8,7 +8,7 @@ import random
 import os
 import io
 import time
-from util import CPU_Unpickler, read_pickle, apply_transform, get_time_slice, preprocess, apply_padding
+from empirical.util import CPU_Unpickler, read_pickle, apply_transform, get_time_slice, preprocess, apply_padding
 
 def euclidean_distance(point1, point2):
     """
