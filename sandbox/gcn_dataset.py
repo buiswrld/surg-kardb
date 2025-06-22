@@ -63,7 +63,7 @@ class GNNDataset(Dataset):
             dtype=torch.float,
         )
 
-    def _load_metric(metrics_dir: str, fname: str):
+    def _load_metric(self, metrics_dir: str, fname: str):
         path = os.path.join(metrics_dir, fname)
         if not os.path.exists(path):
             return {}
