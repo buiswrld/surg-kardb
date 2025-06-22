@@ -6,7 +6,7 @@ import torch
 from torch.utils.data import Dataset
 from torch_geometric.data import Data
 
-from .edge import (
+from edge import (
     convert_pkl_to_matrices,
     get_spatial_pairs_from_named_joints,
 )
