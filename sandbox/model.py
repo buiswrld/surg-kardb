@@ -186,23 +186,32 @@ class GNNTask(pl.LightningModule):
     def __init__(self, hparams: dict):
         super().__init__()
         self.save_hyperparameters(hparams)
-        self.c_in        = self.hparams.get("c_in", 3)
-        self.c_hidden    = self.hparams.get("c_hidden", 128)
-        self.num_classes = self.hparams.get("num_classes", 2)
-        self.attn_heads  = self.hparams.get("attn_heads", 1)
-        self.num_layers  = self.hparams.get("num_layers", 5)
-        self.layer_name  = self.hparams.get("layer_name", "GCN")
-        self.dp_rate     = self.hparams.get("dp_rate", 0.1)
-        self.metrics_dim = self.hparams.get("metrics_dim", 6)
-        self.model = GNNModel(
-            c_in=self.c_in,
-            c_hidden=self.c_hidden,
-            c_out=self.num_classes,
-            num_layers=self.num_layers,
-            layer_name=self.layer_name,
-            dp_rate=self.dp_rate,
-            metrics_dim=self.metrics_dim,
+
+        self._ds_kwargs = dict(
+            pkl_path          = self.hparams["dataset_path"],
+            seq_len           = self.hparams.get("seq_len", 5),
+            num_joints        = self.hparams.get("num_joints", 28),
+            coords_per_joint  = self.hparams.get("coords_per_joint", 3),
+            metrics_path      = self.hparams.get(
+                                   "metrics_path",
+                                   "./metrics/per_clip_metrics_1s.pkl"),
+            metric_set        = self.hparams.get("metric_set", "all"),
         )
+        probe_ds = GNNDataset(split="train", **self._ds_kwargs)
+        self.metrics_dim = probe_ds.metrics_dim
+        self.num_classes = self.hparams.get("num_classes", 2)
+
+        self.model = GNNModel(
+            c_in        = self.hparams.get("c_in", 3),
+            c_hidden    = self.hparams.get("c_hidden", 128),
+            c_out       = self.num_classes,
+            num_layers  = self.hparams.get("num_layers", 5),
+            layer_name  = self.hparams.get("layer_name", "GCN"),
+            dp_rate     = self.hparams.get("dp_rate", 0.1),
+            metrics_dim = self.metrics_dim,
+            attn_heads  = self.hparams.get("attn_heads", 1),
+        )
+
         self.loss = nn.CrossEntropyLoss()
         self._val_outputs, self._test_outputs = [], []
 
@@ -210,7 +219,8 @@ class GNNTask(pl.LightningModule):
         return self.model(x, edge_index, batch_vec, metrics)
 
     def _shared_step(self, batch):
-        logits = self.forward(batch.x, batch.edge_index, batch.batch, batch.metrics)
+        logits = self.forward(batch.x, batch.edge_index,
+                              batch.batch, batch.metrics)
         loss   = self.loss(logits, batch.y.long().view(-1))
         probs  = torch.softmax(logits, dim=1)
         return loss, probs
@@ -228,8 +238,7 @@ class GNNTask(pl.LightningModule):
         if not self._val_outputs:
             return
         labels, probs, losses = zip(*self._val_outputs)
-        labels = torch.cat(labels)
-        probs  = torch.cat(probs)
+        labels = torch.cat(labels); probs = torch.cat(probs)
         loss   = torch.stack(losses).mean()
         self.log("val_loss", loss, prog_bar=True)
 
@@ -247,8 +256,7 @@ class GNNTask(pl.LightningModule):
         if not self._test_outputs:
             return
         labels, probs, losses = zip(*self._test_outputs)
-        labels = torch.cat(labels)
-        probs  = torch.cat(probs)
+        labels = torch.cat(labels); probs = torch.cat(probs)
         loss   = torch.stack(losses).mean()
         self.log("test_loss", loss)
 
@@ -259,24 +267,20 @@ class GNNTask(pl.LightningModule):
         self._test_outputs.clear()
 
     def configure_optimizers(self):
-        lr = self.hparams.get("learn_rate", 3e-4)
-        wd = self.hparams.get("weight_decay", 0.0)
-        return torch.optim.Adam(self.parameters(), lr=lr, weight_decay=wd)
-
-    def _loader(self, split: str, shuffle: bool):
-        ds = GNNDataset(
-            pkl_path   = self.hparams["dataset_path"],
-            split      = split,
-            seq_len    = self.hparams.get("seq_len", 5),
-            num_joints = self.hparams.get("num_joints", 28),
-            coords_per_joint = self.hparams.get("coords_per_joint", 3),
+        return torch.optim.Adam(
+            self.parameters(),
+            lr=self.hparams.get("learn_rate", 3e-4),
+            weight_decay=self.hparams.get("weight_decay", 0.0),
         )
+    
+    def _loader(self, split: str, shuffle: bool):
+        ds = GNNDataset(split=split, **self._ds_kwargs)
         return GeoDataLoader(
             ds,
-            batch_size = self.hparams.get("batch_size", 32),
-            shuffle    = shuffle,
-            num_workers= self.hparams.get("num_workers", 8),
-            pin_memory = self.hparams.get("pin_memory", True),
+            batch_size  = self.hparams.get("batch_size", 32),
+            shuffle     = shuffle,
+            num_workers = self.hparams.get("num_workers", 8),
+            pin_memory  = self.hparams.get("pin_memory", True),
         )
 
     def train_dataloader(self): return self._loader("train", shuffle=True)

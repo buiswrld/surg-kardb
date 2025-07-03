@@ -16,7 +16,7 @@ def euclidean_distance(point1, point2):
     """
     return np.linalg.norm(np.array(point1) - np.array(point2))
 
-
+# USEFUL
 def detect_engagement(wrist_threshold, elbow_threshold, joints_3d):
     """
     Detect engagement based on wrist and elbow distances.
@@ -40,7 +40,7 @@ def detect_engagement(wrist_threshold, elbow_threshold, joints_3d):
     # Check if both wrist and elbow distances are below their respective thresholds
     return wrist_distance < wrist_threshold and elbow_distance < elbow_threshold
  
-
+# USEFUL
 def detect_engagement_event(time_slice,
                             wrist_threshold, 
                             elbow_threshold, 

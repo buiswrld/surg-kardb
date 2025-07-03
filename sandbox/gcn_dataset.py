@@ -1,27 +1,27 @@
-import os
-import pickle
-from collections import defaultdict
-
-import torch
+import os, pickle, torch
 from torch.utils.data import Dataset
 from torch_geometric.data import Data
+from .edge import convert_pkl_to_matrices, get_spatial_pairs_from_named_joints
 
-from edge import (
-    convert_pkl_to_matrices,
-    get_spatial_pairs_from_named_joints,
-)
-
-
-_METRIC_FILES = {
-    "attn": "attn_events_per_sample.pkl",
-    "coll": "collision_count_per_sample.pkl",
-    "group": "group_level_metrics.pkl",
+_METRIC_KEYS = {
+    "dist"  : ["total_distance"],
+    "speed" : ["speed_mean", "speed_std"],
+    "engage": ["engagement_events"],
+    "attn"  : ["attention_changes"],
+    "motion": ["total_distance", "speed_mean", "speed_std"],
+    "usage" : ["engagement_events", "attention_changes"],
+    "all"   : [
+        "total_distance", "speed_mean", "speed_std",
+        "engagement_events", "gaze_stability",
+        "attention_changes", "window_seconds"
+    ],
 }
 
 
 class GNNDataset(Dataset):
-    """PyTorch `Dataset` wrapper that returns a PyG `Data` object **plus**
-    concatenated empirical‑metric features.
+    """
+    Converts the pre-baked .pkl dataset into PyG Data objects *and*
+    appends a configurable empirical-metrics vector under `.metrics`.
     """
 
     def __init__(
@@ -32,11 +32,14 @@ class GNNDataset(Dataset):
         seq_len: int = 5,
         num_joints: int = 28,
         coords_per_joint: int = 3,
-        metrics_dir: str = "./metrics",
+        metrics_path: str = "./metrics/per_clip_metrics_1s.pkl",
+        metric_set: str = "all",
     ) -> None:
-        
+
         if split not in {"train", "valid", "test"}:
-            raise ValueError(f"Invalid split: {split}")
+            raise ValueError(f"Invalid split '{split}'")
+        if metric_set not in _METRIC_KEYS:
+            raise ValueError(f"Unknown metric_set '{metric_set}'")
 
         spatial_pairs = get_spatial_pairs_from_named_joints()
         self.data_list = convert_pkl_to_matrices(
@@ -48,49 +51,32 @@ class GNNDataset(Dataset):
             split=split,
         )
 
-        # ---------------- metrics ---------------
-        self.attn_dict = self._load_metric(metrics_dir, _METRIC_FILES["attn"])
-        self.coll_dict = self._load_metric(metrics_dir, _METRIC_FILES["coll"])
-        self.group_dict = self._load_metric(metrics_dir, _METRIC_FILES["group"])
-
-        self._group_vec = torch.tensor(
-            [
-                float(self.group_dict.get("__GROUP_ATTENTION_FRAMES__", 0)),
-                float(self.group_dict.get("__MEAN_CENTROID_DISPERSION__", 0)),
-                float(self.group_dict.get("__TOTAL_CENTROID_DRIFT__", 0)),
-                float(self.group_dict.get("__TOTAL_PAIRWISE_MOTION__", 0)),
-            ],
+        with open(metrics_path, "rb") as f:
+            full_metric_dict = pickle.load(f)
+        self.metric_keys = _METRIC_KEYS[metric_set]
+        self.metric_vec  = torch.tensor(
+            [float(full_metric_dict.get(k, 0.0)) for k in self.metric_keys],
             dtype=torch.float,
         )
+        self.metrics_dim = len(self.metric_keys)
 
-    def _load_metric(self, metrics_dir: str, fname: str):
-        path = os.path.join(metrics_dir, fname)
-        if not os.path.exists(path):
-            return {}
-        with open(path, "rb") as f:
-            return pickle.load(f)
-    
     def __len__(self):
         return len(self.data_list)
 
     def __getitem__(self, idx: int) -> Data:
         sample = self.data_list[idx]
 
-        # ---------------- core graph data ----------------
         x = torch.tensor(sample["x"], dtype=torch.float)
         edge_index = sample["edge_index"].long()
         y = torch.tensor([sample["y"]], dtype=torch.long)
 
         data = Data(x=x, edge_index=edge_index, y=y)
         data.id = sample.get("id", f"sample_{idx}")
-
-        # ---------------- metrics tensor -----------------
-        attn = float(self.attn_dict.get(data.id, 0))
-        coll = float(self.coll_dict.get(data.id, 0))
-        per_person_vec = torch.tensor([attn, coll], dtype=torch.float)
-
-        data.metrics = torch.cat([per_person_vec, self._group_vec])
-        # Keep raw scalars for convenience / analysis
-        data.attn_events = attn
-        data.collision_count = coll
+        data.metrics         = self.metric_vec.clone()
+        data.total_distance  = self.metric_vec[self.metric_keys.index("total_distance")] \
+                               if "total_distance" in self.metric_keys else None
+        data.engagement_cnt  = self.metric_vec[self.metric_keys.index("engagement_events")] \
+                               if "engagement_events" in self.metric_keys else None
+        data.attn_switches   = self.metric_vec[self.metric_keys.index("attention_changes")] \
+                               if "attention_changes" in self.metric_keys else None
         return data

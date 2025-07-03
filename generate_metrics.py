@@ -1,133 +1,111 @@
-"""
-generate_metrics.py  —  minimal-patch version (TRACKER-ID SUFFIX FIX)
-Keys now match convert_pkl_to_matrices():  cam_clip_start_tracker
-"""
+import os, glob, pickle, numpy as np
+from typing import List, Dict
+from empirical.util    import read_pickle
+from empirical.tool    import detect_engagement_event
+from empirical.attn    import compute_gaze_vector
+from empirical.collide import calculate_velocity
 
-import os, pickle, numpy as np
-from collections import defaultdict
+# ---------- CONFIG ----------
+FRAMES_DIR   = "./joint_out"
+SAVE_DIR     = "./metrics"
+FPS          = 30
+ABLATE_SEC   = [1, 2, 3, 4]
 
-# empirical imports ----------------------------------------------------------
-from empirical.attn       import process_files as attn_process_files, count_focused_attention_events
-from empirical.collide    import detect_collisions
-from empirical.group_attn import group_focused_attention
-from empirical.group_prox import process_files as prox_process_files, calculate_distance
-from empirical.group_dist import get_distance_diff
+# tool‑use thresholds (mentor‑specified)
+WRIST_TH = 0.30   # m
+ELBOW_TH = 0.60   # m
 
-# dataset import (for correct ID mapping) ------------------------------------
-from sandbox.edge import convert_pkl_to_matrices 
+# gaze‑switch params (tuned)
+GAZE_COS        = 0.342   # cos 70° – only big head turns
+GAZE_SMOOTH_WIN = 25      # stronger moving-average
+SWITCH_STRIDE   = 6       # test every 6th frame
 
-# CONFIG ---------------------------------------------------------------------
-FRAMES_DIR = "./joint_out"           
-DATASET_PKL = "sandbox/action_dataset_joints_leg_sampled_150.pkl"
-SAVE_DIR = "./metrics"
-SEQ_LEN = 150
+PEL_IDX = 0  # pelvis joint index
 os.makedirs(SAVE_DIR, exist_ok=True)
 
-# HELPERS --------------------------------------------------------------------
-def _load_frames(folder: str):
-    from empirical.util import read_pickle
-    paths = sorted(p for p in os.listdir(folder) if p.endswith(".pkl"))
-    return [read_pickle(os.path.join(folder, p)) for p in paths]
+# ---------- Load frames ----------
+paths = sorted(glob.glob(os.path.join(FRAMES_DIR, "frame_*.pkl")))
+if not paths:
+    raise RuntimeError("No frame_*.pkl files found in joint_out/")
+frames: List[Dict] = [read_pickle(p) for p in paths]
+print(f"Loaded {len(frames)} frames from joint_out/")
 
-def _tracker_to_full_id(dataset_pkl: str):
-    """
-    Build {tracker_id(str) : cam_clip_start_tracker(str)} using the MAIN dataset.
-    Handles both '2' and '2.0' forms by mapping both → same full ID.
-    """
-    mapping = {}
-    samples = convert_pkl_to_matrices(
-        pkl_path=dataset_pkl,
-        spatial_pairs=[],
-        seq_len=SEQ_LEN, num_joints=28, coords_per_joint=3,
-        split="train"
+# ---------- Unit detection ----------
+pel_sample = np.array([fr["joints3d"][0][PEL_IDX] for fr in frames[:100]])
+unit_scale = 0.001 if np.max(np.abs(pel_sample)) > 10 else 1.0
+if unit_scale != 1.0:
+    print("⚠ Detected large joint magnitudes; assuming millimetres → metres re‑scale 0.001")
+
+# ---------- Motion (shared) ----------
+
+total_dist, speeds = 0.0, []
+prev = None
+for fr in frames:
+    pos = fr["joints3d"][0][PEL_IDX] * unit_scale
+    if prev is not None:
+        v = calculate_velocity(prev, pos)
+        total_dist += v
+        speeds.append(v)
+    prev = pos
+speed_mean = float(np.mean(speeds)) if speeds else 0.0
+speed_std  = float(np.std(speeds))  if speeds else 0.0
+
+# ---------- Gaze vectors (cached & smoothed) ----------
+gaze_raw = np.array([compute_gaze_vector(fr["joints3d"][0])[1] for fr in frames])
+if GAZE_SMOOTH_WIN > 1:
+    kernel = np.ones(GAZE_SMOOTH_WIN) / GAZE_SMOOTH_WIN
+    gaze_vecs = np.empty_like(gaze_raw)
+    for i in range(3):
+        gaze_vecs[:, i] = np.convolve(gaze_raw[:, i], kernel, mode="same")
+    gaze_vecs /= np.linalg.norm(gaze_vecs, axis=1, keepdims=True) + 1e-8
+else:
+    gaze_vecs = gaze_raw
+
+gaze_mean_global = gaze_vecs.mean(0)
+gaze_mean_global /= np.linalg.norm(gaze_mean_global) + 1e-8
+
+# ------------- Sanity print -------------
+print("Pelvis coord range (m):", np.min(pel_sample*unit_scale), "→", np.max(pel_sample*unit_scale))
+print("Total distance (m)   :", total_dist)
+print("Mean speed  (m/s)    :", speed_mean * FPS)
+print("Std  speed  (m/s)    :", speed_std  * FPS)
+
+# ---------- Ablation loop ----------
+for secs in ABLATE_SEC:
+    win_frames = secs * FPS
+
+    # Tool engagement
+    _d, eng_cnt, _rec = detect_engagement_event(
+        time_slice=frames,
+        wrist_threshold=WRIST_TH,
+        elbow_threshold=ELBOW_TH,
+        event_time_threshold=win_frames,
     )
-    for s in samples:
-        full_id = s["id"]                       # e.g. c2_20_0_2.0
-        float_suffix = full_id.split("_")[-1]    # 2.0
-        int_suffix   = str(int(float(float_suffix)))  # 2
-        mapping[int_suffix]   = full_id
-        mapping[float_suffix] = full_id          # harmless duplicate
-    return mapping
 
-# ---------- Tunable params ----------------------------------------
-ATTN_MARGIN = 30        # degrees
-ATTN_WINDOW = 5         # consecutive frames
-COLL_RADIUS = 2.0       # meters
-COLL_V_THRESH = 0.0     # m/s (0 = ignore velocity check)
-# ---------------------------------------------------------------------------
 
-# INDIVIDUAL PERSON METRICS -------------------------------------------------------------
-def compute_attention_events(frames_dir):
-    data_dict, start_dict, total_frames = attn_process_files(frames_dir)
-    raw, _ = count_focused_attention_events(
-        data_dict,
-        margin_of_error=ATTN_MARGIN,
-        time_frame=ATTN_WINDOW,
-        start_frame_dict=start_dict,
-        total_num_frames=total_frames,
+    # Attention changes with smoothed gaze and stride
+    attn_changes = sum(
+        np.dot(gaze_vecs[i], gaze_vecs[i - win_frames]) < GAZE_COS
+        for i in range(win_frames, len(gaze_vecs), SWITCH_STRIDE)
     )
-    flat = {}
-    for sub in (raw.values() if isinstance(next(iter(raw.values())), dict) else [raw]):
-        for tid, cnt in sub.items():
-            flat[str(tid)] = int(cnt)
-    return flat
+    gaze_stab = float(np.mean(gaze_vecs @ gaze_mean_global))
 
-def compute_collision_counts(frames):
-    events, _, _ = detect_collisions(frames, radius=COLL_RADIUS, velocity_threshold=COLL_V_THRESH)
-    counts = defaultdict(int)
-    for ev in events:
-        counts[str(ev["person_1"])] += 1
-        counts[str(ev["person_2"])] += 1
-    return counts
+    metrics = {
+        "engagement_events":   int(eng_cnt),
+        "total_distance":      float(total_dist),
+        "speed_mean":          speed_mean,
+        "speed_std":           speed_std,
+        "mean_gaze_vector":    gaze_mean_global.astype(np.float32),
+        "gaze_stability":      gaze_stab,
+        "attention_changes":   int(attn_changes),
+        "window_seconds":      secs,
+    }
 
+    out_path = os.path.join(SAVE_DIR, f"per_clip_metrics_{secs}s.pkl")
+    with open(out_path, "wb") as f:
+        pickle.dump(metrics, f)
 
-# GROUP METRICS --------------------------------------------------------------
-def compute_group_attention(frames, min_frames=15, vec_thresh=2):
-    per_frame = [{t: fr["joints3d"][i] for i, t in enumerate(fr["trackers"])} for fr in frames]
-    focus, _, _ = group_focused_attention(per_frame, min_frames, vec_thresh)
-    return {"__GROUP_ATTENTION_FRAMES__": int(focus)}
-
-def compute_group_proximity(frames_dir):
-    data = prox_process_files(frames_dir)
-    disp, drift = calculate_distance(data)
-    return {"__MEAN_CENTROID_DISPERSION__": float(np.mean(disp)),
-            "__TOTAL_CENTROID_DRIFT__":      float(np.sum(drift))}
-
-def compute_group_distribution(frames):
-    joints = [fr["joints3d"] for fr in frames]
-    trackers = [fr["trackers"] for fr in frames]
-    return {"__TOTAL_PAIRWISE_MOTION__": float(sum(get_distance_diff(joints, trackers)))}
-
-# ------------------------------ MAIN ----------------------------------------
-if __name__ == "__main__":
-    print("➜ loading frames …")
-    frames = _load_frames(FRAMES_DIR)
-    t2id   = _tracker_to_full_id(DATASET_PKL)     #  <-- FIXED MAPPING
-
-    print("➜ computing metrics …")
-    attn_raw = compute_attention_events(FRAMES_DIR)
-    coll_raw = compute_collision_counts(frames)
-
-    # re-key to full IDs ------------------------------------------------------
-    attention_events = {t2id[k]: v for k, v in attn_raw.items() if k in t2id}
-    collision_counts = {t2id[k]: v for k, v in coll_raw.items() if k in t2id}
-
-    # group metrics
-    group_attention    = compute_group_attention(frames)
-    group_proximity    = compute_group_proximity(FRAMES_DIR)
-    group_distribution = compute_group_distribution(frames)
-
-    # SAVE -------------------------------------------------------------------
-    with open(os.path.join(SAVE_DIR, "attn_events_per_sample.pkl"), "wb") as f:
-        pickle.dump(attention_events, f)
-    with open(os.path.join(SAVE_DIR, "collision_count_per_sample.pkl"), "wb") as f:
-        pickle.dump(collision_counts, f)
-
-    grp = {}; grp.update(group_attention); grp.update(group_proximity); grp.update(group_distribution)
-    with open(os.path.join(SAVE_DIR, "group_level_metrics.pkl"), "wb") as f:
-        pickle.dump(grp, f)
-
-    # sanity
-    print(f"    ✔ attention_events: {len(attention_events):>4} keys")
-    print(f"    ✔ collision_counts: {len(collision_counts):>4} keys")
-    print("\nAll metric dictionaries written to:", SAVE_DIR)
+    print(f"✓ wrote {out_path}")
+    for k, v in metrics.items():
+        if k != "mean_gaze_vector":
+            print(f"   {k:18s}: {v}")

@@ -25,6 +25,8 @@ Applies padding and transformation to every frame in timeslice
 - Could look at average group distances moved over windows/phases
 """
 
+# USEFUL (distance traversal-- calculating distance moved )
+
 def get_distance_diff(data, trackers):
     res = [] # total difference across frames
     id_dict = {} # key: id; value: previous location

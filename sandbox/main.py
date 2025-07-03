@@ -20,7 +20,6 @@ def train(save_dir="/workspace/experiments/simulation/mixer_results",
           c_in=3,            
           c_hidden=128,            
           num_layers=5,       
-          metrics_dim=6,
           exp_name="test_1",
           gpus=1, 
           pretrained=True,
@@ -44,7 +43,9 @@ def train(save_dir="/workspace/experiments/simulation/mixer_results",
           mlp_ratio=(0.5, 4.0), 
           dropout_prob=0.0, 
           metrics_strategy="weighted",
-          oversample=False 
+          oversample=False,
+          metrics_path="/workspace/surg-kardb/metrics/per_clip_metrics_1s.pkl",
+          metrics_set="all", #Options: ["dist", "speed", "engage", "attn", "motion", "usage", "all"]
           ):
     """
     Run Trainer 
