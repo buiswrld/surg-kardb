@@ -97,6 +97,7 @@ def convert_pkl_to_matrices(
 
     results = []
     for sample_array, label, identifier in dataset[split]:
+        print(f"[DEBUG] sample_array.shape: {sample_array.shape}, coords_per_joint: {coords_per_joint}")
         assert sample_array.shape == (seq_len, num_joints * coords_per_joint), \
             f"Expected ({seq_len}, {num_joints * coords_per_joint}), got {sample_array.shape}"
 

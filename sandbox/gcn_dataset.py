@@ -66,6 +66,9 @@ class GNNDataset(Dataset):
     def __getitem__(self, idx: int) -> Data:
         sample = self.data_list[idx]
 
+        print(f"[DEBUG] sample['x'].shape: {sample['x'].shape}")  # Should be (seq_len*num_joints, coords_per_joint)
+
+
         x = torch.tensor(sample["x"], dtype=torch.float)
         edge_index = sample["edge_index"].long()
         y = torch.tensor([sample["y"]], dtype=torch.long)
