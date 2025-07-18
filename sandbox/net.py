@@ -69,6 +69,7 @@ class GNNModel(nn.Module):
         metrics_dim = 0, # number of empirical metrics
         **kwargs,
     ):
+        print("*********************************************************************************************[DEBUG] GNNModel class definition reached")
         """GNNModel.
 
         Args:
