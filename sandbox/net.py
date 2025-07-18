@@ -69,7 +69,6 @@ class GNNModel(nn.Module):
         metrics_dim = 0, # number of empirical metrics
         **kwargs,
     ):
-        print("*********************************************************************************************[DEBUG] GNNModel class definition reached")
         """GNNModel.
 
         Args:
@@ -105,13 +104,12 @@ class GNNModel(nn.Module):
         #breakpoint() 
         self.layers = nn.ModuleList(layers)
         self.head = nn.Sequential(
-            nn.Linear(c_out + metrics_dim, 128),
+            #nn.Linear(c_out + metrics_dim, 128),
+            nn.Linear(115, 128)
             nn.ReLU(),
             nn.Dropout(dp_rate),
             nn.Linear(128, c_out),
         )
-        print(f"*********************************************************************************************[DEBUG][GNNModel.__init__] c_out: {c_out}, metrics_dim: {metrics_dim}, self.head[0].in_features: {self.head[0].in_features}")
-
     '''
     def forward(self, x, edge_index, batch=None, metrics=None):
         """Forward.
