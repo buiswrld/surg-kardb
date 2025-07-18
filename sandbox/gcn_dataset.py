@@ -65,8 +65,6 @@ class GNNDataset(Dataset):
 
     def __getitem__(self, idx: int) -> Data:
         sample = self.data_list[idx]
-        print(f"[DEBUG][Dataset.__getitem__] sample['x'].shape: {sample['x'].shape}")
-        print(f"[DEBUG][Dataset.__getitem__] metrics shape: {self.metric_vec.shape}")
 
         x = torch.tensor(sample["x"], dtype=torch.float)
         edge_index = sample["edge_index"].long()

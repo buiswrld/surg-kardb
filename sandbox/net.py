@@ -138,30 +138,21 @@ class GNNModel(nn.Module):
 
 
     def forward(self, x, edge_index, batch=None, metrics=None):
-        print(f"[DEBUG][GNNModel.forward] x shape at entry: {x.shape}")
-        print(f"[DEBUG][GNNModel.forward] metrics shape at entry: {None if metrics is None else metrics.shape}")
         if batch is None:
             batch = torch.zeros(x.size(0), dtype=torch.long, device=x.device)
         for i, layer in enumerate(self.layers):
             if isinstance(layer, geom_nn.MessagePassing):
-                print(f"[DEBUG] Passing through GNN layer {i}: {layer.__class__.__name__}, x shape: {x.shape}")
                 x = layer(x, edge_index)
-                print(f"[DEBUG] After GNN layer {i}, x shape: {x.shape}")
             else:
                 x = layer(x)
-                print(f"[DEBUG] After non-GNN layer {i}, x shape: {x.shape}")
         x = global_mean_pool(x, batch) if batch is not None else x
-        print(f"[DEBUG] After pooling, x shape: {x.shape}")
         if metrics is not None:
         # metrics must already be [batch_size, metrics_dim]
             assert metrics.dim()==2 and metrics.size(0)==x.size(0), \
                 f"metrics must be [B, M], got {metrics.shape}"
             x = torch.cat([x, metrics], dim=1)
-            print(f"[DEBUG] After concat, x shape: {x.shape}")
-            print(f"[DEBUG] self.head[0].in_features: {self.head[0].in_features}")
 
         x = self.head(x)
-        print(f"[DEBUG] After head, x shape: {x.shape}")
         return x
 
 def gnn_sandbox_function():
