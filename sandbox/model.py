@@ -216,15 +216,20 @@ class GNNTask(pl.LightningModule):
         self._val_outputs, self._test_outputs = [], []
 
     def forward(self, x, edge_index, batch_vec, metrics=None):
+        print(f"[DEBUG][GNNTask.forward] x shape before concat: {x.shape}")
+        print(f"[DEBUG][GNNTask.forward] metrics shape before concat: {None if metrics is None else metrics.shape}")
         if metrics is not None:
             if metrics.dim() == 1:
-                # Expand metrics to match batch size
                 batch_size = x.size(0)
                 metrics = metrics.unsqueeze(0).expand(batch_size, -1)
+            print(f"[DEBUG][GNNTask.forward] x shape for concat: {x.shape}, metrics shape for concat: {metrics.shape}")
             x = torch.cat([x, metrics], dim=1)
+            print(f"[DEBUG][GNNTask.forward] x shape after concat: {x.shape}")
         return self.model(x, edge_index, batch_vec, metrics)
 
     def _shared_step(self, batch):
+        print(f"[DEBUG][GNNTask._shared_step] batch.x shape: {batch.x.shape}")
+        print(f"[DEBUG][GNNTask._shared_step] batch.metrics shape: {batch.metrics.shape}")
         logits = self.forward(batch.x, batch.edge_index,
                               batch.batch, batch.metrics)
         loss   = self.loss(logits, batch.y.long().view(-1))

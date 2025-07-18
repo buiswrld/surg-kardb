@@ -139,8 +139,8 @@ class GNNModel(nn.Module):
 
 
     def forward(self, x, edge_index, batch=None, metrics=None):
-        print(f"[DEBUG] Initial x shape: {x.shape}")  # node features
-        print(f"[DEBUG] metrics shape: {None if metrics is None else metrics.shape}")
+        print(f"[DEBUG][GNNModel.forward] x shape at entry: {x.shape}")
+        print(f"[DEBUG][GNNModel.forward] metrics shape at entry: {None if metrics is None else metrics.shape}")
         if batch is None:
             batch = torch.zeros(x.size(0), dtype=torch.long, device=x.device)
         for i, layer in enumerate(self.layers):
