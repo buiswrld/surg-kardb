@@ -110,6 +110,7 @@ class GNNModel(nn.Module):
             nn.Linear(128, c_out),
         )
 
+    '''
     def forward(self, x, edge_index, batch=None, metrics=None):
         """Forward.
         Args:
@@ -129,6 +130,24 @@ class GNNModel(nn.Module):
         x = global_mean_pool(x, batch) if batch is not None else x
         if metrics is not None:
             # Ensure metrics is [batch_size, metrics_dim]
+            if metrics.dim() == 1:
+                metrics = metrics.unsqueeze(0)
+            x = torch.cat([x, metrics], dim=1)
+        x = self.head(x)
+        return x
+    '''
+
+
+    def forward(self, x, edge_index, batch=None, metrics=None):
+        if batch is None:
+            batch = torch.zeros(x.size(0), dtype=torch.long, device=x.device)
+        for layer in self.layers:
+            if isinstance(layer, geom_nn.MessagePassing):
+                x = layer(x, edge_index)
+            else:
+                x = layer(x)
+        x = global_mean_pool(x, batch) if batch is not None else x
+        if metrics is not None:
             if metrics.dim() == 1:
                 metrics = metrics.unsqueeze(0)
             x = torch.cat([x, metrics], dim=1)
