@@ -110,30 +110,27 @@ class GNNModel(nn.Module):
             nn.Linear(128, c_out),
         )
 
-    def forward(self, x, edge_index, batch = None, metrics = None):
+    def forward(self, x, edge_index, batch=None, metrics=None):
         """Forward.
-
         Args:
             x: Input features per node
             edge_index: List of vertex index pairs representing the edges in the graph (PyTorch geometric notation)
-
         """
-
         if batch is None:
             batch = torch.zeros(x.size(0), dtype=torch.long, device=x.device)
         for layer in self.layers:
+            if isinstance(layer, geom_nn.MessagePassing):
             # For graph layers, we need to add the "edge_index" tensor as additional input
             # All PyTorch Geometric graph layer inherit the class "MessagePassing", hence
             # we can simply check the class type.
-            #breakpoint() 
-            if isinstance(layer, geom_nn.MessagePassing):
                 x = layer(x, edge_index)
-                #breakpoint() 
             else:
                 x = layer(x)
-                #breakpoint() 
         x = global_mean_pool(x, batch) if batch is not None else x
         if metrics is not None:
+            # Ensure metrics is [batch_size, metrics_dim]
+            if metrics.dim() == 1:
+                metrics = metrics.unsqueeze(0)
             x = torch.cat([x, metrics], dim=1)
         x = self.head(x)
         return x
