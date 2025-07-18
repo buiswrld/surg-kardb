@@ -154,8 +154,12 @@ class GNNModel(nn.Module):
         x = global_mean_pool(x, batch) if batch is not None else x
         print(f"[DEBUG] After pooling, x shape: {x.shape}")
         if metrics is not None:
+            # Ensure metrics is [batch_size, metrics_dim]
             if metrics.dim() == 1:
                 metrics = metrics.unsqueeze(0)
+            if metrics.shape[0] != x.shape[0]:
+                # Repeat metrics for each sample in the batch if needed
+                metrics = metrics.expand(x.shape[0], -1)
             print(f"[DEBUG] Before concat, x shape: {x.shape}, metrics shape: {metrics.shape}")
             x = torch.cat([x, metrics], dim=1)
             print(f"[DEBUG] After concat, x shape: {x.shape}")
