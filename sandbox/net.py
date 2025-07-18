@@ -105,7 +105,7 @@ class GNNModel(nn.Module):
         self.layers = nn.ModuleList(layers)
         self.head = nn.Sequential(
             #nn.Linear(c_out + metrics_dim, 128),
-            nn.Linear(115, 128)
+            nn.Linear(115, 128),
             nn.ReLU(),
             nn.Dropout(dp_rate),
             nn.Linear(128, c_out),
