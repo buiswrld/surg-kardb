@@ -216,8 +216,12 @@ class GNNTask(pl.LightningModule):
         self._val_outputs, self._test_outputs = [], []
 
     def forward(self, x, edge_index, batch_vec, metrics=None):
-        print("x shape:", x.shape)
-        print("metrics shape:", metrics.shape)
+        if metrics is not None:
+            if metrics.dim() == 1:
+                # Expand metrics to match batch size
+                batch_size = x.size(0)
+                metrics = metrics.unsqueeze(0).expand(batch_size, -1)
+            x = torch.cat([x, metrics], dim=1)
         return self.model(x, edge_index, batch_vec, metrics)
 
     def _shared_step(self, batch):
