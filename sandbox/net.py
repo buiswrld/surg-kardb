@@ -109,7 +109,7 @@ class GNNModel(nn.Module):
             nn.Dropout(dp_rate),
             nn.Linear(128, c_out),
         )
-        print(f"[DEBUG][GNNModel.__init__] c_out: {c_out}, metrics_dim: {metrics_dim}, self.head[0].in_features: {self.head[0].in_features}")
+        print(f"*********************************************************************************************[DEBUG][GNNModel.__init__] c_out: {c_out}, metrics_dim: {metrics_dim}, self.head[0].in_features: {self.head[0].in_features}")
 
     '''
     def forward(self, x, edge_index, batch=None, metrics=None):
