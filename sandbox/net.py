@@ -87,6 +87,9 @@ class GNNModel(nn.Module):
         layers = []
         in_channels, out_channels = c_in, c_hidden
         for l_idx in range(num_layers - 1):
+            layer_kwargs = {}
+            if layer_name == "GAT":
+                layer_kwargs["heads"] = kwargs.get("attn_heads", 1)
             layers += [
                 gnn_layer(in_channels=in_channels, out_channels=out_channels, **kwargs),
                 nn.ReLU(inplace=True),
