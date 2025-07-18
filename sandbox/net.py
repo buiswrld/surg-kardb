@@ -96,7 +96,11 @@ class GNNModel(nn.Module):
                 nn.Dropout(dp_rate),
             ]
             in_channels = c_hidden
-        layers += [gnn_layer(in_channels=in_channels, out_channels=c_out, **kwargs)]
+
+        layer_kwargs = {}
+        if layer_name == "GAT":
+            layer_kwargs["heads"] = kwargs.get("attn_heads", 1)
+        layers += [gnn_layer(in_channels=in_channels, out_channels=c_out, **layer_kwargs)]
         #breakpoint() 
         self.layers = nn.ModuleList(layers)
         self.head = nn.Sequential(
