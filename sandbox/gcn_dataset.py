@@ -5,7 +5,11 @@ from edge import convert_pkl_to_matrices, get_spatial_pairs_from_named_joints
 
 _METRIC_KEYS = {
     "dist"  : ["total_distance"],
+
+    "speed_mean" : ["speed_mean"],
+    "speed_std"  : ["speed_std"],
     "speed" : ["speed_mean", "speed_std"],
+    
     "engage": ["engagement_events"],
     "attn"  : ["attention_changes"],
     "motion": ["total_distance", "speed_mean", "speed_std"],
