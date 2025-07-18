@@ -74,7 +74,7 @@ class GNNDataset(Dataset):
 
         data = Data(x=x, edge_index=edge_index, y=y)
         data.id = sample.get("id", f"sample_{idx}")
-        data.metrics         = self.metric_vec.clone()
+        data.metrics         = self.metric_vec.clone().unsqueeze(0)
         data.total_distance  = self.metric_vec[self.metric_keys.index("total_distance")] \
                                if "total_distance" in self.metric_keys else None
         data.engagement_cnt  = self.metric_vec[self.metric_keys.index("engagement_events")] \

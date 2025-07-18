@@ -104,8 +104,7 @@ class GNNModel(nn.Module):
         #breakpoint() 
         self.layers = nn.ModuleList(layers)
         self.head = nn.Sequential(
-            #nn.Linear(c_out + metrics_dim, 128),
-            nn.Linear(115, 128),
+            nn.Linear(c_out + metrics_dim, 128),
             nn.ReLU(),
             nn.Dropout(dp_rate),
             nn.Linear(128, c_out),
@@ -154,13 +153,9 @@ class GNNModel(nn.Module):
         x = global_mean_pool(x, batch) if batch is not None else x
         print(f"[DEBUG] After pooling, x shape: {x.shape}")
         if metrics is not None:
-            # Ensure metrics is [batch_size, metrics_dim]
-            if metrics.dim() == 1:
-                metrics = metrics.unsqueeze(0)
-            if metrics.shape[0] != x.shape[0]:
-                # Repeat metrics for each sample in the batch if needed
-                metrics = metrics.expand(x.shape[0], -1)
-            print(f"[DEBUG] Before concat, x shape: {x.shape}, metrics shape: {metrics.shape}")
+        # metrics must already be [batch_size, metrics_dim]
+            assert metrics.dim()==2 and metrics.size(0)==x.size(0), \
+                f"metrics must be [B, M], got {metrics.shape}"
             x = torch.cat([x, metrics], dim=1)
             print(f"[DEBUG] After concat, x shape: {x.shape}")
             print(f"[DEBUG] self.head[0].in_features: {self.head[0].in_features}")
