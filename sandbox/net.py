@@ -109,6 +109,7 @@ class GNNModel(nn.Module):
             nn.Dropout(dp_rate),
             nn.Linear(128, c_out),
         )
+        print(f"[DEBUG][GNNModel.__init__] c_out: {c_out}, metrics_dim: {metrics_dim}, self.head[0].in_features: {self.head[0].in_features}")
 
     '''
     def forward(self, x, edge_index, batch=None, metrics=None):
@@ -163,6 +164,8 @@ class GNNModel(nn.Module):
             print(f"[DEBUG] Before concat, x shape: {x.shape}, metrics shape: {metrics.shape}")
             x = torch.cat([x, metrics], dim=1)
             print(f"[DEBUG] After concat, x shape: {x.shape}")
+            print(f"[DEBUG] self.head[0].in_features: {self.head[0].in_features}")
+
         x = self.head(x)
         print(f"[DEBUG] After head, x shape: {x.shape}")
         return x
