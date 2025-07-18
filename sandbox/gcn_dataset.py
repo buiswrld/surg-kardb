@@ -9,7 +9,7 @@ _METRIC_KEYS = {
     "speed_mean" : ["speed_mean"],
     "speed_std"  : ["speed_std"],
     "speed" : ["speed_mean", "speed_std"],
-    
+
     "engage": ["engagement_events"],
     "attn"  : ["attention_changes"],
     "motion": ["total_distance", "speed_mean", "speed_std"],
@@ -19,6 +19,15 @@ _METRIC_KEYS = {
         "engagement_events", "gaze_stability",
         "attention_changes", "window_seconds"
     ],
+
+    # scaffolding
+    "level1" : [ "total_distance"],
+    "level2" : [ "total_distance", "speed_mean", "speed_std"],
+    "level3" : ["total_distance", "speed_mean", "speed_std", "attention_changes"],
+    "level4" : [ "total_distance", "speed_mean", "speed_std",
+                "engagement_events", "attention_changes", "gaze_stability",
+                "window_seconds"
+    ]
 }
 
 

@@ -45,7 +45,7 @@ def train(save_dir="/workspace/experiments/simulation/mixer_results",
           metrics_strategy="weighted",
           oversample=False,
           metrics_path="/workspace/surg-kardb/metrics/per_clip_metrics_1s.pkl",
-          metrics_set="all", #Options: ["dist", "speed", "engage", "attn", "motion", "usage", "all"]
+          metrics_set="all", #Options: ["dist", "speed_mean", "speed_std", "engage", "attn", "motion", "usage", "all"] ["level1", "level2", "level3", "level4"]
           ):
     """
     Run Trainer 
