@@ -216,6 +216,8 @@ class GNNTask(pl.LightningModule):
         self._val_outputs, self._test_outputs = [], []
 
     def forward(self, x, edge_index, batch_vec, metrics=None):
+        print("x shape:", x.shape)
+        print("metrics shape:", metrics.shape)
         return self.model(x, edge_index, batch_vec, metrics)
 
     def _shared_step(self, batch):
