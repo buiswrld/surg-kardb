@@ -197,8 +197,9 @@ class GNNTask(pl.LightningModule):
                                    "./metrics/per_clip_metrics_1s.pkl"),
             metric_set        = self.hparams.get("metric_set", "all"),
         )
-        print(f">>> Using metric_set='{self._ds_kwargs['metric_set']}', metrics_dim={probe_ds.metrics_dim}")
         probe_ds = GNNDataset(split="train", **self._ds_kwargs)
+        print(f">>> Using metric_set='{self._ds_kwargs['metric_set']}', metrics_dim={probe_ds.metrics_dim}")
+
         self.metrics_dim = probe_ds.metrics_dim
         self.num_classes = self.hparams.get("num_classes", 2)
 
