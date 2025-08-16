@@ -15,12 +15,14 @@ def get_pelvis(joints):
     """
     return joints[:, 0, (0, 2)]  # Extract the pelvis joint for all people in the frame
 
+# USEFUL
 def calculate_velocity(prev_position, curr_position):
     """
     Calculate the velocity between two positions.
     """
     return np.linalg.norm(curr_position - prev_position)
 
+# USEFUL
 def is_walking(velocity, velocity_threshold=0.1):
     """
     Determine if a person is walking based on velocity.

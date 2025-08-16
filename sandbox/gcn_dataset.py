@@ -28,6 +28,9 @@ _METRIC_KEYS = {
                 "engagement_events", "attention_changes", "gaze_stability",
                 "window_seconds"
     ]
+
+    #baseline
+    "none" : [],
 }
 
 

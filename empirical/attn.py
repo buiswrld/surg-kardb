@@ -5,6 +5,7 @@ import torch
 import io
 from empirical.util import read_pickle, apply_transform
 
+# STAR 
 def compute_gaze_vector(joints):
     """
     Computes the gaze direction vector for a single person's joint data.
