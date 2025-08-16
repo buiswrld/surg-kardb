@@ -27,7 +27,7 @@ _METRIC_KEYS = {
     "level4" : [ "total_distance", "speed_mean", "speed_std",
                 "engagement_events", "attention_changes", "gaze_stability",
                 "window_seconds"
-    ]
+    ],
 
     #baseline
     "none" : [],
